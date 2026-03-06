@@ -5,6 +5,38 @@ All notable changes to [clawport-ui](https://www.npmjs.com/package/clawport-ui) 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-03-06
+
+### Added
+
+- Activity Console page with historical log browser and summary cards.
+- Floating Live Stream widget -- global SSE-powered log viewer that persists across navigation. Three states: hidden, collapsed pill, expanded panel with play/pause, copy, and auto-scroll.
+- Expandable log rows: click any row to see the raw JSON payload.
+- Memory Guide tab: categorized best practices (Writing, Search, Maintenance) with DO/DON'T pills, responsive 2-column config visualizer grid.
+- SSE parser library (`lib/sse.ts`) with `parseSSEBuffer()` and `parseSSELine()`.
+- Cost analysis library (`lib/costs.ts`) with `getCostSummary()`.
+
+### Fixed
+
+- Memory browser file content not visible on desktop (sidebar missing `browser-sidebar` class, consumed full container width).
+
+### Changed
+
+- Activity page no longer has a Feed tab -- live streaming moved to global widget, page renders LogBrowser directly with an "Open Live Stream" button.
+- Memory Guide tab now fills full container width (removed `maxWidth: 640` constraint).
+
+## [0.5.5] - 2026-03-05
+
+### Changed
+
+- Documentation overhaul: comprehensive CLAUDE.md, API.md, COMPONENTS.md, THEMING.md.
+
+## [0.5.4] - 2026-03-05
+
+### Added
+
+- Activity Console with live feed and log browser.
+
 ## [0.5.3] - 2026-03-05
 
 ### Changed
@@ -165,6 +197,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Memory browser.
 - Next.js 16 App Router with Turbopack.
 
+[0.6.0]: https://github.com/JohnRiceML/clawport-ui/compare/v0.5.5...v0.6.0
+[0.5.5]: https://github.com/JohnRiceML/clawport-ui/compare/v0.5.4...v0.5.5
+[0.5.4]: https://github.com/JohnRiceML/clawport-ui/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/JohnRiceML/clawport-ui/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/JohnRiceML/clawport-ui/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/JohnRiceML/clawport-ui/compare/v0.5.0...v0.5.1

@@ -6,7 +6,7 @@
 
 [![npm version](https://img.shields.io/npm/v/clawport-ui.svg)](https://www.npmjs.com/package/clawport-ui)
 [![license](https://img.shields.io/npm/l/clawport-ui.svg)](LICENSE)
-[![tests](https://img.shields.io/badge/tests-442%20passed-brightgreen)](#testing)
+[![tests](https://img.shields.io/badge/tests-501%20passed-brightgreen)](#testing)
 
 [Website](https://clawport.dev) | [Setup Guide](SETUP.md) | [API Docs](docs/API.md) | [npm](https://www.npmjs.com/package/clawport-ui)
 
@@ -14,7 +14,7 @@
 
 ---
 
-ClawPort is an open-source dashboard for managing, monitoring, and talking directly to your [OpenClaw](https://openclaw.ai) AI agents. It connects to your local OpenClaw gateway and gives you an org chart, direct agent chat with vision and voice, a kanban board, cron monitoring, and a memory browser -- all in one place.
+ClawPort is an open-source dashboard for managing, monitoring, and talking directly to your [OpenClaw](https://openclaw.ai) AI agents. It connects to your local OpenClaw gateway and gives you an org chart, direct agent chat with vision and voice, a kanban board, cron monitoring, an activity console with live log streaming, and a memory browser -- all in one place.
 
 No separate AI API keys needed. Everything routes through your OpenClaw gateway.
 
@@ -84,7 +84,8 @@ npm run dev
 - **Chat** -- Streaming text chat, image attachments with vision, voice messages with waveform playback, file attachments, clipboard paste and drag-and-drop. Conversations persist locally.
 - **Kanban** -- Task board for managing work across agents. Drag-and-drop cards with agent assignment and chat context.
 - **Cron Monitor** -- Live status of all scheduled jobs. Filter by status, sort errors to top, expand for details. Auto-refreshes every 60 seconds.
-- **Memory Browser** -- Read team memory, long-term memory, and daily logs. Markdown rendering, JSON syntax highlighting, search, and download.
+- **Activity Console** -- Log browser for historical events plus a floating live stream widget. Click any log row to expand the raw JSON. The live stream widget persists across page navigation.
+- **Memory Browser** -- Read team memory, long-term memory, and daily logs. Markdown rendering, JSON syntax highlighting, search, and download. Guide tab with categorized best practices.
 - **Agent Detail** -- Full profile per agent: SOUL.md viewer, tools, hierarchy, crons, voice ID, and direct chat link.
 - **Five Themes** -- Dark, Glass, Color, Light, and System. All CSS custom properties -- switch instantly.
 - **Auto-Discovery** -- Automatically finds agents from your OpenClaw workspace. No config file needed.
@@ -167,7 +168,7 @@ clawport help     # Show usage
 ## Testing
 
 ```bash
-npm test             # 442 tests across 21 suites (Vitest)
+npm test             # 501 tests across 23 suites (Vitest)
 npx tsc --noEmit     # Type-check (zero errors)
 npx next build       # Production build
 ```

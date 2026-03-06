@@ -5,7 +5,7 @@
 ```bash
 npm run setup        # Auto-detect OpenClaw config, write .env.local
 npm run dev          # Start dev server (Turbopack, port 3000)
-npm test             # Run all 347 tests via Vitest (18 suites)
+npm test             # Run all 501 tests via Vitest (23 suites)
 npx tsc --noEmit     # Type-check (expect 0 errors)
 npx next build       # Production build
 ```
@@ -27,7 +27,7 @@ The CLI resolves its own package root via `import.meta.url`, so all commands wor
 
 ## Project Overview
 
-ClawPort is a Next.js 16 dashboard for managing OpenClaw AI agents. It provides an org chart (Org Map), direct agent chat with multimodal support, cron monitoring, and memory browsing. All AI calls route through the OpenClaw gateway -- no separate API keys needed.
+ClawPort is a Next.js 16 dashboard for managing OpenClaw AI agents. It provides an org chart (Org Map), direct agent chat with multimodal support, cron monitoring, an activity console with live log streaming, and memory browsing. All AI calls route through the OpenClaw gateway -- no separate API keys needed.
 
 ## Tech Stack
 
@@ -126,6 +126,22 @@ Key files: `lib/audio-recorder.ts`, `lib/transcribe.ts`, `components/chat/VoiceM
 
 Messages stored in localStorage as JSON. Media attachments are base64 data URLs (not blob URLs -- those don't survive reload). The `conversations.ts` module provides `addMessage()`, `updateLastMessage()`, and `parseMedia()`.
 
+### Activity Console & Live Stream
+
+The Activity page (`app/activity/page.tsx`) shows a log browser for historical cron and config events. Live streaming is handled by a global floating widget:
+
+```
+"Open Live Stream" button (Activity page)
+  -> dispatches CustomEvent('clawport:open-stream-widget')
+  -> LiveStreamWidget (components/LiveStreamWidget.tsx) listens, opens expanded
+  -> fetch('/api/logs/stream') -> SSE stream -> parseSSEBuffer() (lib/sse.ts)
+  -> Lines rendered with level pills (INF/WRN/ERR/DBG), click to expand raw JSON
+```
+
+The widget is mounted in `app/layout.tsx` (global, survives navigation). Three visual states: hidden (default), collapsed pill, expanded panel. Collapsing does NOT stop the stream. Close stops + hides.
+
+**Key files:** `components/LiveStreamWidget.tsx` (widget), `lib/sse.ts` (SSE parser), `app/api/logs/stream/route.ts` (SSE endpoint spawning `openclaw logs --follow --json`)
+
 ### Theming
 
 Five themes defined via CSS custom properties in `app/globals.css`:
@@ -167,6 +183,8 @@ Used by: `lib/memory.ts`, `lib/cron-runs.ts`, `lib/kanban/chat-store.ts`, `lib/c
 | `/api/chat/[id]` | POST | Agent chat -- text (streaming) or vision (send+poll) |
 | `/api/crons` | GET | Cron jobs via `openclaw cron list --json` |
 | `/api/memory` | GET | Memory dashboard: files, config, status, stats |
+| `/api/logs` | GET | Historical log entries (cron runs + config audit) |
+| `/api/logs/stream` | GET | SSE stream of live logs via `openclaw logs --follow --json` |
 | `/api/tts` | POST | Text-to-speech via OpenClaw |
 | `/api/transcribe` | POST | Audio transcription via Whisper |
 
@@ -187,6 +205,10 @@ Used by: `lib/memory.ts`, `lib/cron-runs.ts`, `lib/kanban/chat-store.ts`, `lib/c
 | `lib/transcribe.ts` | `transcribe(audioBlob)` -- Whisper API with graceful fallback |
 | `lib/memory.ts` | Memory dashboard: `getMemoryFiles()` (dynamic discovery), `getMemoryConfig()` (openclaw.json reader), `getMemoryStatus()` (CLI status), `computeMemoryStats()` (pure stats) |
 | `lib/validation.ts` | `validateChatMessages()` -- validates text + multimodal content arrays |
+| `lib/sse.ts` | `parseSSEBuffer()`, `parseSSELine()` -- client-safe SSE stream parser |
+| `lib/logs.ts` | `getLogEntries()`, `computeLogSummary()` -- historical log parsing (cron + config) |
+| `lib/costs.ts` | `getCostSummary()` -- cost analysis from cron run data |
+| `lib/sanitize.ts` | `renderMarkdown()`, `colorizeJson()`, `escapeHtml()` -- safe HTML rendering |
 
 ### Chat Components
 
@@ -207,6 +229,7 @@ Used by: `lib/memory.ts`, `lib/cron-runs.ts`, `lib/kanban/chat-store.ts`, `lib/c
 | `Sidebar.tsx` | Sidebar layout shell |
 | `AgentAvatar.tsx` | Agent emoji/image avatar with optional background |
 | `DynamicFavicon.tsx` | Updates favicon based on portal emoji/icon settings |
+| `LiveStreamWidget.tsx` | Global floating live log stream widget (hidden/collapsed/expanded) |
 
 ### Scripts & CLI
 
@@ -217,7 +240,7 @@ Used by: `lib/memory.ts`, `lib/cron-runs.ts`, `lib/kanban/chat-store.ts`, `lib/c
 
 ## Testing
 
-18 test suites, 347 tests total. All in `lib/` directory.
+23 test suites, 501 tests total. All in `lib/` directory.
 
 ```bash
 npx vitest run                     # All tests

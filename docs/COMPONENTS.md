@@ -12,6 +12,7 @@ RootLayout (app/layout.tsx)
     SettingsProvider (app/settings-provider.tsx)
       DynamicFavicon (components/DynamicFavicon.tsx)
       OnboardingWizard (components/OnboardingWizard.tsx)
+      LiveStreamWidget (components/LiveStreamWidget.tsx)
       Sidebar (components/Sidebar.tsx)
         NavLinks (components/NavLinks.tsx)
         ThemeToggle (components/ThemeToggle.tsx)
@@ -49,6 +50,8 @@ RootLayout (app/layout.tsx)
         CronsPage (app/crons/page.tsx)
           WeeklySchedule (components/crons/WeeklySchedule.tsx)
           PipelineGraph (components/crons/PipelineGraph.tsx)
+        ActivityPage (app/activity/page.tsx)
+          LogBrowser (components/activity/LogBrowser.tsx)
         MemoryPage (app/memory/page.tsx)
         SettingsPage (app/settings/page.tsx)
           AgentAvatar
@@ -841,6 +844,60 @@ interface AgentNodeData {
 - Uses `ReactFlow` with `fitView` and pan/zoom controls
 
 **Used by:** `app/crons/page.tsx` (pipelines tab)
+
+---
+
+## Activity Components
+
+### ActivityPage
+
+**File:** `app/activity/page.tsx`
+**Purpose:** Activity Console with summary cards (total events, errors, sources) and log browser. Header includes an "Open Live Stream" button that dispatches `clawport:open-stream-widget` to open the global floating widget.
+
+**Key state:**
+- `entries` (useState) -- log entries fetched from `/api/logs`
+- `summary` (useState) -- computed log summary (counts, sources, time range)
+- `filter` (useState) -- log level filter (`all`, `error`, `config`, `cron`)
+
+**Implementation:**
+- Fetches historical logs from `/api/logs` on mount, polls every 60 seconds
+- Summary cards show total events, error count (with pulse animation), and source breakdown
+- "Open Live Stream" button dispatches `CustomEvent('clawport:open-stream-widget')`
+
+**Used by:** Route `/activity`
+
+### LogBrowser
+
+**File:** `components/activity/LogBrowser.tsx`
+**Purpose:** Filterable, searchable table of historical log entries with level badges and expandable details.
+
+**Used by:** `app/activity/page.tsx`
+
+### LiveStreamWidget
+
+**File:** `components/LiveStreamWidget.tsx`
+**Purpose:** Global floating widget for live log streaming via SSE. Mounted in root layout, persists across navigation.
+
+**Props:** None (self-contained, listens for `clawport:open-stream-widget` DOM event)
+
+**Key state:**
+- `state` (useState) -- `'hidden'` | `'collapsed'` | `'expanded'`
+- `lines` (useState) -- `LiveLogLine[]` (max 500, ring buffer)
+- `streaming` (useState) -- whether SSE connection is active
+- `autoScroll` (useState) -- tracks manual scroll detection
+
+**Implementation:**
+- Three visual states: hidden (default, returns null), collapsed pill (bottom-right), expanded panel (440x400)
+- SSE stream via `fetch('/api/logs/stream')` with `parseSSEBuffer()` from `lib/sse.ts`
+- Each log row shows time, level pill (INF/WRN/ERR/DBG), truncated message
+- Click any row to expand raw JSON payload (pretty-printed)
+- Header: status dot, line count, copy all, minimize, close
+- Footer: play/pause toggle, scroll-to-bottom button
+- Copy formats lines as `[HH:MM:SS] [level] message`
+- Collapsing does NOT stop the stream; close stops + hides
+- z-index: 50 (below OnboardingWizard)
+
+**Used by:** `app/layout.tsx` (global mount)
 
 ---
 
