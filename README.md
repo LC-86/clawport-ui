@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="clawport-logo.png" alt="ClawPort" width="160" />
+
 # ClawPort
 
 **A visual command centre for your AI agent team.**

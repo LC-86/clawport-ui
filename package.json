@@ -25,6 +25,7 @@
   "files": [
     "app/",
     "bin/",
+    "clawport-logo.png",
     "components/",
     "docs/",
     "lib/",
