@@ -7,6 +7,7 @@ import { NavLinks } from '@/components/NavLinks';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { SearchTrigger } from '@/components/GlobalSearch';
 import { useSettings } from '@/app/settings-provider';
+import { SidebarUsageWidget } from '@/components/sidebar/SidebarUsageWidget';
 
 export function MobileSidebar({
   onOpenSearch,
@@ -233,7 +234,7 @@ export function MobileSidebar({
           <SearchTrigger onClick={handleSearchClick} />
         </div>
 
-        <NavLinks />
+        <NavLinks bottomSlot={<SidebarUsageWidget />} />
         <ThemeToggle />
       </aside>
     </>

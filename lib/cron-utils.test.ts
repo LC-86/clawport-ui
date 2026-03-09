@@ -1,6 +1,6 @@
 // @vitest-environment node
-import { describe, it, expect } from 'vitest'
-import { parseSchedule, describeCron, formatDuration, parseScheduleSlots } from './cron-utils'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { parseSchedule, describeCron, formatDuration, parseScheduleSlots, timeAgo, nextRunLabel } from './cron-utils'
 
 // --- parseSchedule ---
 
@@ -218,5 +218,130 @@ describe('parseScheduleSlots', () => {
 
   it('returns null for wildcard hour', () => {
     expect(parseScheduleSlots('0 * * * *')).toBeNull()
+  })
+})
+
+// --- timeAgo ---
+
+describe('timeAgo', () => {
+  const NOW = new Date('2025-03-01T12:00:00Z').getTime()
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('returns "never" for null', () => {
+    expect(timeAgo(null)).toBe('never')
+  })
+
+  it('returns "never" for empty string', () => {
+    expect(timeAgo('')).toBe('never')
+  })
+
+  it('returns "—" for invalid date string', () => {
+    expect(timeAgo('not-a-date')).toBe('\u2014')
+  })
+
+  it('returns "just now" for < 1 min ago', () => {
+    const d = new Date(NOW - 30000).toISOString() // 30s ago
+    expect(timeAgo(d)).toBe('just now')
+  })
+
+  it('returns minutes ago for 1-59m', () => {
+    const d = new Date(NOW - 5 * 60000).toISOString() // 5m ago
+    expect(timeAgo(d)).toBe('5m ago')
+  })
+
+  it('returns hours ago for 1-23h', () => {
+    const d = new Date(NOW - 3 * 3600000).toISOString() // 3h ago
+    expect(timeAgo(d)).toBe('3h ago')
+  })
+
+  it('returns days ago for 1+ days', () => {
+    const d = new Date(NOW - 2 * 86400000).toISOString() // 2d ago
+    expect(timeAgo(d)).toBe('2d ago')
+  })
+
+  it('returns "in Xm" for future date within 1 hour', () => {
+    const d = new Date(NOW + 15 * 60000).toISOString() // 15m in future
+    expect(timeAgo(d)).toBe('in 15m')
+  })
+
+  it('returns "in Xh" for future date within 1 day', () => {
+    const d = new Date(NOW + 5 * 3600000).toISOString() // 5h in future
+    expect(timeAgo(d)).toBe('in 5h')
+  })
+
+  it('returns "in Xd" for future date beyond 1 day', () => {
+    const d = new Date(NOW + 3 * 86400000).toISOString() // 3d in future
+    expect(timeAgo(d)).toBe('in 3d')
+  })
+
+  it('handles exactly 1 minute ago', () => {
+    const d = new Date(NOW - 60000).toISOString()
+    expect(timeAgo(d)).toBe('1m ago')
+  })
+
+  it('handles exactly 1 hour ago', () => {
+    const d = new Date(NOW - 3600000).toISOString()
+    expect(timeAgo(d)).toBe('1h ago')
+  })
+})
+
+// --- nextRunLabel ---
+
+describe('nextRunLabel', () => {
+  const NOW = new Date('2025-03-01T12:00:00Z').getTime()
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('returns "not scheduled" for null', () => {
+    expect(nextRunLabel(null)).toBe('not scheduled')
+  })
+
+  it('returns "not scheduled" for empty string', () => {
+    expect(nextRunLabel('')).toBe('not scheduled')
+  })
+
+  it('returns "—" for invalid date string', () => {
+    expect(nextRunLabel('garbage')).toBe('\u2014')
+  })
+
+  it('returns "overdue" for past date', () => {
+    const d = new Date(NOW - 60000).toISOString()
+    expect(nextRunLabel(d)).toBe('overdue')
+  })
+
+  it('returns "in Xm" for minutes in future', () => {
+    const d = new Date(NOW + 25 * 60000).toISOString()
+    expect(nextRunLabel(d)).toBe('in 25m')
+  })
+
+  it('returns "in Xh" for hours in future', () => {
+    const d = new Date(NOW + 6 * 3600000).toISOString()
+    expect(nextRunLabel(d)).toBe('in 6h')
+  })
+
+  it('returns "in Xd" for days in future', () => {
+    const d = new Date(NOW + 4 * 86400000).toISOString()
+    expect(nextRunLabel(d)).toBe('in 4d')
+  })
+
+  it('returns "in 0m" for date exactly now', () => {
+    const d = new Date(NOW).toISOString()
+    // diff = 0, which is not < 0, so not "overdue". mins=0, 0 < 60 → "in 0m"
+    expect(nextRunLabel(d)).toBe('in 0m')
   })
 })

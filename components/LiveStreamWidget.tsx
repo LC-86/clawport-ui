@@ -1,14 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { LiveLogLine } from '@/lib/types'
 import { parseSSEBuffer } from '@/lib/sse'
-import { Play, Pause, Copy, Minimize2, X, ChevronRight } from 'lucide-react'
+import { Play, Pause, Copy, Minimize2, Search, ChevronRight } from 'lucide-react'
 
 /* ── Constants ────────────────────────────────────────────────── */
 
 const MAX_LINES = 500
 const WIDGET_EVENT = 'clawport:open-stream-widget'
+
+const LEVELS = ['info', 'warn', 'error', 'debug'] as const
+type Level = typeof LEVELS[number]
 
 const LEVEL_STYLE: Record<string, { bg: string; color: string; label: string }> = {
   info:  { bg: 'rgba(48,209,88,0.12)', color: 'var(--system-green)', label: 'INF' },
@@ -33,7 +36,7 @@ function prettyRaw(raw: string): string {
 
 /* ── Visual states ────────────────────────────────────────────── */
 
-type WidgetState = 'hidden' | 'collapsed' | 'expanded'
+type WidgetState = 'collapsed' | 'expanded'
 
 /* ── LogRow ───────────────────────────────────────────────────── */
 
@@ -46,7 +49,6 @@ function LogRow({ line }: { line: LiveLogLine }) {
       borderBottom: '1px solid var(--separator)',
       background: line.level === 'error' ? 'rgba(255,69,58,0.03)' : undefined,
     }}>
-      {/* Summary row */}
       <button
         onClick={() => line.raw && setOpen(o => !o)}
         style={{
@@ -61,7 +63,6 @@ function LogRow({ line }: { line: LiveLogLine }) {
           textAlign: 'left',
         }}
       >
-        {/* Expand chevron */}
         {line.raw ? (
           <ChevronRight size={10} style={{
             color: 'var(--text-tertiary)',
@@ -72,48 +73,27 @@ function LogRow({ line }: { line: LiveLogLine }) {
         ) : (
           <span style={{ width: 10, flexShrink: 0 }} />
         )}
-
-        {/* Time */}
         <span className="font-mono" style={{
-          color: 'var(--text-tertiary)',
-          fontSize: 10,
-          flexShrink: 0,
-          minWidth: 58,
+          color: 'var(--text-tertiary)', fontSize: 10, flexShrink: 0, minWidth: 58,
         }}>
           {formatTime(line.time)}
         </span>
-
-        {/* Level pill */}
         <span style={{
-          fontSize: 9,
-          fontWeight: 700,
-          letterSpacing: '0.5px',
-          padding: '1px 5px',
-          borderRadius: 3,
-          background: lvl.bg,
-          color: lvl.color,
-          flexShrink: 0,
-          lineHeight: '14px',
+          fontSize: 9, fontWeight: 700, letterSpacing: '0.5px',
+          padding: '1px 5px', borderRadius: 3,
+          background: lvl.bg, color: lvl.color, flexShrink: 0, lineHeight: '14px',
         }}>
           {lvl.label}
         </span>
-
-        {/* Message (truncated) */}
         <span className="font-mono" style={{
           color: line.level === 'error' ? 'var(--system-red)' : 'var(--text-secondary)',
-          fontSize: 10,
-          lineHeight: 1.4,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          flex: 1,
-          minWidth: 0,
+          fontSize: 10, lineHeight: 1.4,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          flex: 1, minWidth: 0,
         }}>
           {line.message}
         </span>
       </button>
-
-      {/* Raw JSON detail */}
       {open && line.raw && (
         <div style={{
           padding: '6px 12px 8px 30px',
@@ -121,12 +101,8 @@ function LogRow({ line }: { line: LiveLogLine }) {
           background: 'var(--fill-secondary)',
         }}>
           <pre className="font-mono" style={{
-            fontSize: 9,
-            lineHeight: 1.5,
-            color: 'var(--text-secondary)',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            margin: 0,
+            fontSize: 9, lineHeight: 1.5, color: 'var(--text-secondary)',
+            whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0,
           }}>
             {prettyRaw(line.raw)}
           </pre>
@@ -139,15 +115,30 @@ function LogRow({ line }: { line: LiveLogLine }) {
 /* ── Component ────────────────────────────────────────────────── */
 
 export function LiveStreamWidget() {
-  const [state, setState] = useState<WidgetState>('hidden')
+  const [state, setState] = useState<WidgetState>('collapsed')
   const [lines, setLines] = useState<LiveLogLine[]>([])
   const [streaming, setStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [autoScroll, setAutoScroll] = useState(true)
   const [copied, setCopied] = useState(false)
+  const [search, setSearch] = useState('')
+  const [levelFilter, setLevelFilter] = useState<Set<Level>>(new Set(LEVELS))
 
   const abortRef = useRef<AbortController | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  /* ── Filtering ─────────────────────────────────────────────── */
+
+  const filteredLines = useMemo(() => {
+    const q = search.toLowerCase()
+    return lines.filter(line => {
+      if (!levelFilter.has(line.level as Level)) return false
+      if (q && !line.message.toLowerCase().includes(q)) return false
+      return true
+    })
+  }, [lines, search, levelFilter])
+
+  const isFiltering = search !== '' || levelFilter.size < LEVELS.length
 
   /* ── Auto-scroll ──────────────────────────────────────────── */
 
@@ -155,7 +146,7 @@ export function LiveStreamWidget() {
     if (autoScroll && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [lines, autoScroll])
+  }, [filteredLines, autoScroll])
 
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return
@@ -163,6 +154,21 @@ export function LiveStreamWidget() {
     const atBottom = scrollHeight - scrollTop - clientHeight < 40
     if (!atBottom) setAutoScroll(false)
     else setAutoScroll(true)
+  }, [])
+
+  /* ── Level toggle ──────────────────────────────────────────── */
+
+  const toggleLevel = useCallback((level: Level) => {
+    setLevelFilter(prev => {
+      const next = new Set(prev)
+      if (next.has(level)) {
+        // Don't allow deselecting all
+        if (next.size > 1) next.delete(level)
+      } else {
+        next.add(level)
+      }
+      return next
+    })
   }, [])
 
   /* ── Stream lifecycle ─────────────────────────────────────── */
@@ -213,19 +219,14 @@ export function LiveStreamWidget() {
 
   /* ── Actions ──────────────────────────────────────────────── */
 
-  const handleClose = useCallback(() => {
-    stopStream()
-    setState('hidden')
-  }, [stopStream])
-
   const handleCopy = useCallback(async () => {
-    const text = lines.map(formatCopyLine).join('\n')
+    const text = filteredLines.map(formatCopyLine).join('\n')
     await navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
-  }, [lines])
+  }, [filteredLines])
 
-  /* ── DOM event listener ───────────────────────────────────── */
+  /* ── DOM event listener (Activity page "Open Live Logs") ──── */
 
   useEffect(() => {
     function onOpen() {
@@ -246,57 +247,69 @@ export function LiveStreamWidget() {
     }
   }, [])
 
-  /* ── Hidden ───────────────────────────────────────────────── */
-
-  if (state === 'hidden') return null
-
   /* ── Collapsed pill ───────────────────────────────────────── */
 
   if (state === 'collapsed') {
     return (
-      <button
-        onClick={() => setState('expanded')}
-        className="focus-ring flex items-center"
+      <div
+        className="flex items-center"
         style={{
           position: 'fixed',
           bottom: 20,
           right: 20,
           zIndex: 50,
-          padding: '8px 14px',
+          padding: '6px 6px 6px 14px',
           borderRadius: 'var(--radius-pill)',
           border: '1px solid var(--separator)',
           background: 'var(--material-regular)',
           backdropFilter: 'blur(40px) saturate(180%)',
           WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-          cursor: 'pointer',
           gap: 8,
           boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
         }}
       >
         <span style={{
-          width: 8,
-          height: 8,
-          borderRadius: '50%',
+          width: 8, height: 8, borderRadius: '50%',
           background: streaming ? 'var(--system-green)' : 'var(--text-tertiary)',
           animation: streaming ? 'lsw-pulse 2s ease-in-out infinite' : undefined,
           flexShrink: 0,
         }} />
-        <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-secondary)', fontWeight: 'var(--weight-medium)' }}>
-          Live Stream
-        </span>
+        <button
+          onClick={() => setState('expanded')}
+          style={{
+            fontSize: 'var(--text-caption1)', color: 'var(--text-secondary)',
+            fontWeight: 'var(--weight-medium)', background: 'none',
+            border: 'none', cursor: 'pointer', padding: 0,
+          }}
+        >
+          Live Logs
+        </button>
         {lines.length > 0 && (
           <span style={{
-            fontSize: 'var(--text-caption2)',
-            color: 'var(--text-tertiary)',
-            background: 'var(--fill-secondary)',
-            padding: '1px 6px',
+            fontSize: 'var(--text-caption2)', color: 'var(--text-tertiary)',
+            background: 'var(--fill-secondary)', padding: '1px 6px',
             borderRadius: 'var(--radius-sm)',
           }}>
             {lines.length}
           </span>
         )}
+        <button
+          onClick={streaming ? stopStream : startStream}
+          className="focus-ring"
+          title={streaming ? 'Stop stream' : 'Start stream'}
+          style={{
+            width: 28, height: 28,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: '50%', border: 'none', cursor: 'pointer',
+            background: streaming ? 'rgba(255,69,58,0.1)' : 'var(--accent-fill)',
+            color: streaming ? 'var(--system-red)' : 'var(--accent)',
+            transition: 'all 200ms var(--ease-smooth)',
+          }}
+        >
+          {streaming ? <Pause size={12} /> : <Play size={12} />}
+        </button>
         <style>{`@keyframes lsw-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
-      </button>
+      </div>
     )
   }
 
@@ -309,7 +322,7 @@ export function LiveStreamWidget() {
       right: 20,
       zIndex: 50,
       width: 440,
-      height: 400,
+      height: 440,
       borderRadius: 'var(--radius-lg)',
       border: '1px solid var(--separator)',
       background: 'var(--material-regular)',
@@ -327,23 +340,20 @@ export function LiveStreamWidget() {
         gap: 8,
       }}>
         <span style={{
-          width: 8,
-          height: 8,
-          borderRadius: '50%',
+          width: 8, height: 8, borderRadius: '50%',
           background: streaming ? 'var(--system-green)' : 'var(--text-tertiary)',
           animation: streaming ? 'lsw-pulse 2s ease-in-out infinite' : undefined,
           flexShrink: 0,
         }} />
         <span style={{
-          fontSize: 'var(--text-footnote)',
-          fontWeight: 'var(--weight-semibold)',
+          fontSize: 'var(--text-footnote)', fontWeight: 'var(--weight-semibold)',
           color: 'var(--text-primary)',
         }}>
-          Live Stream
+          Live Logs
         </span>
         {lines.length > 0 && (
           <span style={{ fontSize: 'var(--text-caption2)', color: 'var(--text-tertiary)' }}>
-            {lines.length} line{lines.length !== 1 ? 's' : ''}
+            {isFiltering ? `${filteredLines.length} / ${lines.length}` : `${lines.length}`}
           </span>
         )}
 
@@ -351,17 +361,16 @@ export function LiveStreamWidget() {
           <button
             onClick={handleCopy}
             className="focus-ring"
-            title="Copy all logs"
-            disabled={lines.length === 0}
+            title={isFiltering ? 'Copy filtered logs' : 'Copy all logs'}
+            disabled={filteredLines.length === 0}
             style={{
               width: 28, height: 28,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: 'var(--radius-sm)',
-              border: 'none',
+              borderRadius: 'var(--radius-sm)', border: 'none',
               background: copied ? 'var(--accent-fill)' : 'transparent',
               color: copied ? 'var(--accent)' : 'var(--text-tertiary)',
-              cursor: lines.length === 0 ? 'default' : 'pointer',
-              opacity: lines.length === 0 ? 0.3 : 1,
+              cursor: filteredLines.length === 0 ? 'default' : 'pointer',
+              opacity: filteredLines.length === 0 ? 0.3 : 1,
               transition: 'all 150ms var(--ease-smooth)',
             }}
           >
@@ -374,33 +383,92 @@ export function LiveStreamWidget() {
             style={{
               width: 28, height: 28,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: 'var(--radius-sm)',
-              border: 'none',
-              background: 'transparent',
-              color: 'var(--text-tertiary)',
-              cursor: 'pointer',
-              transition: 'color 150ms var(--ease-smooth)',
+              borderRadius: 'var(--radius-sm)', border: 'none',
+              background: 'transparent', color: 'var(--text-tertiary)',
+              cursor: 'pointer', transition: 'color 150ms var(--ease-smooth)',
             }}
           >
             <Minimize2 size={14} />
           </button>
-          <button
-            onClick={handleClose}
-            className="focus-ring"
-            title="Close"
+        </div>
+      </div>
+
+      {/* ── Search + filter bar ────────────────────────────────── */}
+      <div className="flex items-center flex-shrink-0" style={{
+        padding: '6px 10px',
+        borderBottom: '1px solid var(--separator)',
+        gap: 6,
+      }}>
+        {/* Search input */}
+        <div className="flex items-center" style={{
+          flex: 1,
+          minWidth: 0,
+          height: 28,
+          borderRadius: 'var(--radius-sm)',
+          background: 'var(--fill-secondary)',
+          padding: '0 8px',
+          gap: 6,
+        }}>
+          <Search size={12} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+          <input
+            type="text"
+            placeholder="Search logs..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
             style={{
-              width: 28, height: 28,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: 'var(--radius-sm)',
+              flex: 1,
+              minWidth: 0,
               border: 'none',
+              outline: 'none',
               background: 'transparent',
-              color: 'var(--text-tertiary)',
-              cursor: 'pointer',
-              transition: 'color 150ms var(--ease-smooth)',
+              fontSize: '11px',
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-mono)',
             }}
-          >
-            <X size={14} />
-          </button>
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--text-tertiary)', fontSize: '11px', padding: 0,
+                lineHeight: 1,
+              }}
+            >
+              &times;
+            </button>
+          )}
+        </div>
+
+        {/* Level filter pills */}
+        <div className="flex items-center" style={{ gap: 3, flexShrink: 0 }}>
+          {LEVELS.map(level => {
+            const s = LEVEL_STYLE[level]
+            const active = levelFilter.has(level)
+            return (
+              <button
+                key={level}
+                onClick={() => toggleLevel(level)}
+                title={`${active ? 'Hide' : 'Show'} ${level} logs`}
+                style={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: '0.5px',
+                  padding: '2px 6px',
+                  borderRadius: 3,
+                  border: 'none',
+                  cursor: 'pointer',
+                  lineHeight: '14px',
+                  background: active ? s.bg : 'transparent',
+                  color: active ? s.color : 'var(--text-quaternary)',
+                  opacity: active ? 1 : 0.5,
+                  transition: 'all 150ms var(--ease-smooth)',
+                }}
+              >
+                {s.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -426,10 +494,8 @@ export function LiveStreamWidget() {
       >
         {lines.length === 0 ? (
           <div className="flex flex-col items-center justify-center" style={{
-            height: '100%',
-            color: 'var(--text-secondary)',
-            gap: 'var(--space-2)',
-            padding: 'var(--space-4)',
+            height: '100%', color: 'var(--text-secondary)',
+            gap: 'var(--space-2)', padding: 'var(--space-4)',
           }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-tertiary)' }}>
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -438,9 +504,19 @@ export function LiveStreamWidget() {
               {streaming ? 'Waiting for log data...' : 'Click Play to start streaming'}
             </span>
           </div>
+        ) : filteredLines.length === 0 ? (
+          <div className="flex flex-col items-center justify-center" style={{
+            height: '100%', color: 'var(--text-tertiary)',
+            gap: 'var(--space-2)', padding: 'var(--space-4)',
+          }}>
+            <Search size={20} />
+            <span style={{ fontSize: 'var(--text-caption1)', fontWeight: 'var(--weight-medium)' }}>
+              No matching logs
+            </span>
+          </div>
         ) : (
           <div>
-            {lines.map((line, i) => <LogRow key={i} line={line} />)}
+            {filteredLines.map((line, i) => <LogRow key={i} line={line} />)}
           </div>
         )}
       </div>
@@ -457,8 +533,7 @@ export function LiveStreamWidget() {
           style={{
             padding: '4px 12px',
             borderRadius: 'var(--radius-sm)',
-            border: 'none',
-            cursor: 'pointer',
+            border: 'none', cursor: 'pointer',
             fontSize: 'var(--text-caption1)',
             fontWeight: 'var(--weight-semibold)',
             gap: 5,
@@ -471,15 +546,14 @@ export function LiveStreamWidget() {
           {streaming ? 'Pause' : 'Play'}
         </button>
 
-        {!autoScroll && lines.length > 0 && (
+        {!autoScroll && filteredLines.length > 0 && (
           <button
             onClick={() => setAutoScroll(true)}
             className="focus-ring"
             style={{
               padding: '4px 10px',
               borderRadius: 'var(--radius-sm)',
-              border: 'none',
-              cursor: 'pointer',
+              border: 'none', cursor: 'pointer',
               fontSize: 'var(--text-caption2)',
               fontWeight: 'var(--weight-medium)',
               background: 'var(--fill-secondary)',

@@ -1,12 +1,37 @@
 import { execSync } from 'child_process'
+import { readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { join } from 'path'
 import type { ClaudeCodeUsage } from '@/lib/types'
 
 const ANTHROPIC_USAGE_URL = 'https://api.anthropic.com/api/oauth/usage'
+const CACHE_PATH = join(process.env.HOME ?? '/tmp', '.cache', 'clawport-ui', 'usage.json')
+const MAX_RETRIES = 3
+const RETRY_DELAYS = [2000, 5000, 10000] // escalating backoffs
+
+function readCache(): ClaudeCodeUsage | null {
+  try {
+    const data: ClaudeCodeUsage = JSON.parse(readFileSync(CACHE_PATH, 'utf-8'))
+    if (data.fiveHour.utilization === 0 && data.sevenDay.utilization === 0) return null
+    return data
+  } catch {
+    return null
+  }
+}
+
+function writeCache(usage: ClaudeCodeUsage): void {
+  if (usage.fiveHour.utilization === 0 && usage.sevenDay.utilization === 0) return
+  try {
+    mkdirSync(join(process.env.HOME ?? '/tmp', '.cache', 'clawport-ui'), { recursive: true })
+    writeFileSync(CACHE_PATH, JSON.stringify(usage))
+  } catch { /* best effort */ }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
 
 /**
  * Read the Claude Code OAuth token from the macOS Keychain.
- * Credential is stored as JSON under "Claude Code-credentials" service.
- * Returns the bare access token, or null if not found.
  */
 export function getKeychainToken(): string | null {
   try {
@@ -26,36 +51,49 @@ export function getKeychainToken(): string | null {
 
 /**
  * Fetch Claude Code subscription usage (five-hour window + seven-day cap).
- * Returns null if the Keychain token is unavailable or the API call fails.
+ * Retries on 429 with backoff. Falls back to disk cache on failure.
+ * Returns null when no real utilization data is available.
  */
 export async function fetchClaudeCodeUsage(): Promise<ClaudeCodeUsage | null> {
   const token = getKeychainToken()
   if (!token) return null
 
-  try {
-    const res = await fetch(ANTHROPIC_USAGE_URL, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'anthropic-beta': 'oauth-2025-04-20',
-      },
-      signal: AbortSignal.timeout(10000),
-    })
-    if (!res.ok) return null
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const res = await fetch(ANTHROPIC_USAGE_URL, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+          'anthropic-beta': 'oauth-2025-04-20',
+        },
+        signal: AbortSignal.timeout(10000),
+      })
 
-    const data = await res.json()
+      if (res.status === 429 && attempt < MAX_RETRIES) {
+        await sleep(RETRY_DELAYS[attempt])
+        continue
+      }
+      if (!res.ok) return readCache()
 
-    // API returns { five_hour: { utilization, resets_at }, seven_day: { ... } }
-    return {
-      fiveHour: {
-        utilization: data.five_hour?.utilization ?? 0,
-        resetsAt: data.five_hour?.resets_at ?? null,
-      },
-      sevenDay: {
-        utilization: data.seven_day?.utilization ?? 0,
-        resetsAt: data.seven_day?.resets_at ?? null,
-      },
+      const data = await res.json()
+
+      const usage: ClaudeCodeUsage = {
+        fiveHour: {
+          utilization: data.five_hour?.utilization ?? 0,
+          resetsAt: data.five_hour?.resets_at ?? null,
+        },
+        sevenDay: {
+          utilization: data.seven_day?.utilization ?? 0,
+          resetsAt: data.seven_day?.resets_at ?? null,
+        },
+      }
+
+      writeCache(usage)
+      return usage
+    } catch {
+      return readCache()
     }
-  } catch {
-    return null
   }
+
+  return readCache()
 }

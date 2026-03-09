@@ -1,13 +1,22 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { mockExecSync } = vi.hoisted(() => ({
+const { mockExecSync, mockReadFileSync, mockWriteFileSync, mockMkdirSync } = vi.hoisted(() => ({
   mockExecSync: vi.fn(),
+  mockReadFileSync: vi.fn(),
+  mockWriteFileSync: vi.fn(),
+  mockMkdirSync: vi.fn(),
 }))
 
 vi.mock('child_process', () => ({
   execSync: mockExecSync,
   default: { execSync: mockExecSync },
+}))
+
+vi.mock('fs', () => ({
+  readFileSync: mockReadFileSync,
+  writeFileSync: mockWriteFileSync,
+  mkdirSync: mockMkdirSync,
 }))
 
 import { getKeychainToken, fetchClaudeCodeUsage } from './claude-usage'
@@ -56,6 +65,7 @@ describe('fetchClaudeCodeUsage', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     global.fetch = vi.fn()
+    mockReadFileSync.mockImplementation(() => { throw new Error('ENOENT') })
   })
 
   it('returns null when keychain has no token', async () => {
@@ -83,23 +93,55 @@ describe('fetchClaudeCodeUsage', () => {
     expect(global.fetch).toHaveBeenCalledWith(
       'https://api.anthropic.com/api/oauth/usage',
       expect.objectContaining({
-        headers: {
+        headers: expect.objectContaining({
           Authorization: 'Bearer token-123',
           'anthropic-beta': 'oauth-2025-04-20',
-        },
+        }),
       }),
     )
   })
 
-  it('returns null on non-200 response', async () => {
+  it('retries on 429 then succeeds', async () => {
     mockExecSync.mockReturnValue(KEYCHAIN_JSON('token-123'))
-    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false })
+    ;(global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ ok: false, status: 429 })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          five_hour: { utilization: 30, resets_at: '2026-03-10T01:00:00Z' },
+          seven_day: { utilization: 12, resets_at: '2026-03-15T00:00:00Z' },
+        }),
+      })
+
+    const result = await fetchClaudeCodeUsage()
+    expect(result).toEqual({
+      fiveHour: { utilization: 30, resetsAt: '2026-03-10T01:00:00Z' },
+      sevenDay: { utilization: 12, resetsAt: '2026-03-15T00:00:00Z' },
+    })
+    expect(global.fetch).toHaveBeenCalledTimes(2)
+  }, 10000)
+
+  it('returns cached data on non-200 when cache has real values', async () => {
+    const cached = { fiveHour: { utilization: 10, resetsAt: null }, sevenDay: { utilization: 5, resetsAt: null } }
+    mockExecSync.mockReturnValue(KEYCHAIN_JSON('token-123'))
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, status: 500 })
+    mockReadFileSync.mockReturnValue(JSON.stringify(cached))
+
+    const result = await fetchClaudeCodeUsage()
+    expect(result).toEqual(cached)
+  })
+
+  it('does NOT return cached zeros', async () => {
+    const zeros = { fiveHour: { utilization: 0, resetsAt: null }, sevenDay: { utilization: 0, resetsAt: null } }
+    mockExecSync.mockReturnValue(KEYCHAIN_JSON('token-123'))
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, status: 500 })
+    mockReadFileSync.mockReturnValue(JSON.stringify(zeros))
 
     const result = await fetchClaudeCodeUsage()
     expect(result).toBeNull()
   })
 
-  it('returns null on fetch error', async () => {
+  it('returns null on fetch error when no cache', async () => {
     mockExecSync.mockReturnValue(KEYCHAIN_JSON('token-123'))
     ;(global.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network error'))
 
@@ -119,5 +161,30 @@ describe('fetchClaudeCodeUsage', () => {
       fiveHour: { utilization: 0, resetsAt: null },
       sevenDay: { utilization: 0, resetsAt: null },
     })
+  })
+
+  it('does NOT write cache when API returns zeros', async () => {
+    mockExecSync.mockReturnValue(KEYCHAIN_JSON('token-123'))
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    })
+
+    await fetchClaudeCodeUsage()
+    expect(mockWriteFileSync).not.toHaveBeenCalled()
+  })
+
+  it('writes cache on successful fetch with real values', async () => {
+    mockExecSync.mockReturnValue(KEYCHAIN_JSON('token-123'))
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        five_hour: { utilization: 50, resets_at: '2026-03-10T00:00:00Z' },
+        seven_day: { utilization: 20, resets_at: '2026-03-15T00:00:00Z' },
+      }),
+    })
+
+    await fetchClaudeCodeUsage()
+    expect(mockWriteFileSync).toHaveBeenCalled()
   })
 })

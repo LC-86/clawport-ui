@@ -19,12 +19,15 @@ export async function GET(request: Request) {
         } catch { /* controller closed */ }
       }
 
+      let lastGood: Awaited<ReturnType<typeof fetchClaudeCodeUsage>> = null
+
       async function tick() {
         try {
           const usage = await fetchClaudeCodeUsage()
-          send(JSON.stringify({ type: 'usage', data: usage }))
+          if (usage) lastGood = usage
+          send(JSON.stringify({ type: 'usage', data: usage ?? lastGood }))
         } catch {
-          send(JSON.stringify({ type: 'usage', data: null }))
+          send(JSON.stringify({ type: 'usage', data: lastGood }))
         }
       }
 

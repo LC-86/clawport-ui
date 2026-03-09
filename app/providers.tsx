@@ -18,13 +18,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setThemeState(t);
     localStorage.setItem('clawport-theme', t);
     const html = document.documentElement;
-    html.removeAttribute('data-theme');
-    if (t === 'system') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      html.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
-    } else {
-      html.setAttribute('data-theme', t);
-    }
+    html.setAttribute('data-theme', t);
   }
 
   return (

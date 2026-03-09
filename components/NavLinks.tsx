@@ -42,7 +42,7 @@ const NAV_ITEMS: NavItem[] = [
 // NavLinks component
 // ---------------------------------------------------------------------------
 
-export function NavLinks() {
+export function NavLinks({ bottomSlot }: { bottomSlot?: React.ReactNode } = {}) {
   const pathname = usePathname();
   const { settings } = useSettings();
   const [agentCount, setAgentCount] = useState<number | null>(null);
@@ -152,8 +152,9 @@ export function NavLinks() {
   }
 
   return (
-    <nav className="flex-1 flex flex-col" aria-label="Main navigation">
-      <div className="px-3 pt-2 pb-3">
+    <nav className="flex-1 flex flex-col" style={{ minHeight: 0, overflow: 'hidden' }} aria-label="Main navigation">
+      {/* Scrollable nav items */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 12px 8px' }}>
         {/* Section header */}
         <div
           style={{
@@ -163,7 +164,7 @@ export function NavLinks() {
             color: 'var(--text-tertiary)',
             textTransform: 'uppercase',
             padding: '0 8px',
-            marginBottom: '4px',
+            marginBottom: '2px',
           }}
         >
           Workspace
@@ -189,7 +190,7 @@ export function NavLinks() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px',
-                  minHeight: '44px',
+                  minHeight: '36px',
                   padding: '0 10px 0 12px',
                   borderRadius: '8px',
                   fontSize: '13px',
@@ -201,7 +202,7 @@ export function NavLinks() {
                 }}
               >
                 <Icon
-                  size={18}
+                  size={16}
                   style={{
                     flexShrink: 0,
                     color: isActive ? 'var(--accent)' : 'var(--text-tertiary)',
@@ -216,54 +217,57 @@ export function NavLinks() {
         </div>
       </div>
 
-      <div className="flex-1" />
+      {/* Pinned bottom: usage widget + user footer */}
+      <div style={{ flexShrink: 0 }}>
+        {bottomSlot}
 
-      {/* User footer */}
-      <div
-        style={{
-          borderTop: '1px solid var(--separator)',
-          padding: '10px 16px',
-        }}
-      >
-        <div className="flex items-center gap-2.5">
-          <div
-            style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '7px',
-              background: 'var(--accent-fill)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '11px',
-              fontWeight: 700,
-              color: 'var(--accent)',
-              flexShrink: 0,
-              letterSpacing: '-0.02em',
-            }}
-          >
-            {getInitials(settings.operatorName)}
-          </div>
-          <div style={{ minWidth: 0 }}>
+        {/* User footer */}
+        <div
+          style={{
+            borderTop: '1px solid var(--separator)',
+            padding: '8px 16px',
+          }}
+        >
+          <div className="flex items-center gap-2.5">
             <div
               style={{
-                fontSize: '13px',
-                fontWeight: 500,
-                color: 'var(--text-primary)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {settings.operatorName ?? 'Operator'}
-            </div>
-            <div
-              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '7px',
+                background: 'var(--accent-fill)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 fontSize: '11px',
-                color: 'var(--text-tertiary)',
+                fontWeight: 700,
+                color: 'var(--accent)',
+                flexShrink: 0,
+                letterSpacing: '-0.02em',
               }}
             >
-              Owner
+              {getInitials(settings.operatorName)}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: 'var(--text-primary)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {settings.operatorName ?? 'Operator'}
+              </div>
+              <div
+                style={{
+                  fontSize: '11px',
+                  color: 'var(--text-tertiary)',
+                }}
+              >
+                Owner
+              </div>
             </div>
           </div>
         </div>

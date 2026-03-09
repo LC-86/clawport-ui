@@ -2,25 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import type { LogEntry, LogFilter, LogSummary } from '@/lib/types'
+import { timeAgo } from '@/lib/cron-utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import { RefreshCw, Radio } from 'lucide-react'
 import { ErrorState } from '@/components/ErrorState'
 import { LogBrowser } from '@/components/activity/LogBrowser'
-
-/* ── Time helpers ──────────────────────────────────────────────── */
-
-function timeAgo(dateStr: string): string {
-  const d = new Date(dateStr)
-  if (isNaN(d.getTime())) return '--'
-  const diff = Date.now() - d.getTime()
-  const mins = Math.floor(diff / 60000)
-  const hrs = Math.floor(diff / 3600000)
-  const days = Math.floor(diff / 86400000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  if (hrs < 24) return `${hrs}h ago`
-  return `${days}d ago`
-}
 
 /* ── Summary Cards ─────────────────────────────────────────────── */
 
@@ -201,7 +187,7 @@ export default function ActivityPage() {
               }}
             >
               <Radio size={14} />
-              Open Live Stream
+              Open Live Logs
             </button>
 
             <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)' }}>

@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import { NavLinks } from '@/components/NavLinks';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { MobileSidebar } from '@/components/MobileSidebar';
+import { SidebarUsageWidget } from '@/components/sidebar/SidebarUsageWidget';
 import { GlobalSearch, SearchTrigger } from '@/components/GlobalSearch';
 import { useSettings } from '@/app/settings-provider';
 
@@ -93,7 +94,7 @@ export function Sidebar() {
           <SearchTrigger onClick={openSearch} />
         </div>
 
-        <NavLinks />
+        <NavLinks bottomSlot={<SidebarUsageWidget />} />
         <ThemeToggle />
       </aside>
 
