@@ -2,9 +2,10 @@ export const runtime = 'nodejs'
 
 import { getAgent } from '@/lib/agents'
 import OpenAI from 'openai'
+import { gatewayBaseUrl } from '@/lib/env'
 
 const openai = new OpenAI({
-  baseURL: 'http://localhost:18789/v1',
+  baseURL: gatewayBaseUrl(),
   apiKey: process.env.OPENCLAW_GATEWAY_TOKEN,
 })
 

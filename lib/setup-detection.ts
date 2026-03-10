@@ -54,6 +54,21 @@ export function detectGatewayToken(): string | null {
   }
 }
 
+// ── Gateway Port ──────────────────────────────────────────────────
+
+/** Read the gateway HTTP port from ~/.openclaw/openclaw.json. Returns null if not set or default. */
+export function detectGatewayPort(): number | null {
+  const configPath = join(homedir(), '.openclaw', 'openclaw.json')
+  if (!existsSync(configPath)) return null
+  try {
+    const config = JSON.parse(readFileSync(configPath, 'utf-8'))
+    const port = config?.gateway?.http?.port
+    return typeof port === 'number' ? port : null
+  } catch {
+    return null
+  }
+}
+
 // ── HTTP Endpoint ─────────────────────────────────────────────────
 
 /** Check if the HTTP chat completions endpoint is enabled in openclaw.json. */
@@ -92,6 +107,7 @@ export interface DetectionResult {
   workspacePath: string | null
   openclawBin: string | null
   gatewayToken: string | null
+  gatewayPort: number | null
   httpEndpointEnabled: boolean | null
 }
 
@@ -101,6 +117,7 @@ export function detectAll(): DetectionResult {
     workspacePath: detectWorkspacePath(),
     openclawBin: detectOpenClawBin(),
     gatewayToken: detectGatewayToken(),
+    gatewayPort: detectGatewayPort(),
     httpEndpointEnabled: checkHttpEndpointEnabled(),
   }
 }

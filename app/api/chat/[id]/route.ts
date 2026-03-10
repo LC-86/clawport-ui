@@ -4,10 +4,11 @@ import { getAgent } from '@/lib/agents'
 import { validateChatMessages } from '@/lib/validation'
 import { hasImageContent, extractImageAttachments, buildTextPrompt, sendViaOpenClaw } from '@/lib/anthropic'
 import OpenAI from 'openai'
+import { gatewayBaseUrl } from '@/lib/env'
 
 // Route through the OpenClaw gateway — no separate API key needed
 const openai = new OpenAI({
-  baseURL: 'http://localhost:18789/v1',
+  baseURL: gatewayBaseUrl(),
   apiKey: process.env.OPENCLAW_GATEWAY_TOKEN,
 })
 

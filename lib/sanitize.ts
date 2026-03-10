@@ -120,11 +120,14 @@ export interface MarkdownRendererOptions {
  * Render a plain-text markdown string to safe HTML.
  *
  * The pipeline is:
- *   1. Escape ALL HTML entities (neutralises any injected markup)
- *   2. Apply markdown transformation rules in order
+ *   1. Extract fenced code blocks (``` ... ```) and replace with placeholders
+ *   2. Escape ALL HTML entities (neutralises any injected markup)
+ *   3. Apply markdown transformation rules in order
+ *   4. Reinsert pre-rendered code blocks
  *
  * Because escaping happens first, captured groups ($1 etc.) only ever
  * contain escaped text — no raw HTML can slip through.
+ * Code blocks are escaped independently and wrapped in <pre><code>.
  */
 export function renderMarkdown(
   text: string,
@@ -132,13 +135,34 @@ export function renderMarkdown(
 ): string {
   const rules = options?.rules ?? DEFAULT_MARKDOWN_RULES;
 
-  // Step 1 — escape (this is the security boundary)
-  let html = escapeHtml(text);
+  // Step 1 — extract fenced code blocks before escaping (they need special handling)
+  const codeBlocks: string[] = [];
+  const withPlaceholders = text.replace(
+    /```(\w*)\n([\s\S]*?)```/g,
+    (_match, lang: string, code: string) => {
+      const idx = codeBlocks.length;
+      const escaped = escapeHtml(code.trimEnd());
+      const langAttr = lang ? ` data-lang="${escapeHtml(lang)}"` : '';
+      const langLabel = lang
+        ? `<div style="font-size:11px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px">${escapeHtml(lang)}</div>`
+        : '';
+      codeBlocks.push(
+        `<pre style="background:var(--fill-secondary);border:1px solid var(--separator);border-radius:8px;padding:12px 16px;overflow-x:auto;margin:12px 0;font-size:13px;line-height:1.6"${langAttr}>${langLabel}<code style="font-family:var(--font-mono);color:var(--text-primary);white-space:pre;word-break:normal">${escaped}</code></pre>`,
+      );
+      return `\x00CB${idx}\x00`;
+    },
+  );
 
-  // Step 2 — apply markdown transformations on the safe string
+  // Step 2 — escape (this is the security boundary)
+  let html = escapeHtml(withPlaceholders);
+
+  // Step 3 — apply markdown transformations on the safe string
   for (const rule of rules) {
     html = html.replace(rule.pattern, rule.replacement);
   }
+
+  // Step 4 — reinsert code blocks (placeholders survived escaping since \x00 is not in the escape map)
+  html = html.replace(/\x00CB(\d+)\x00/g, (_m, idx) => codeBlocks[parseInt(idx)]);
 
   return html;
 }

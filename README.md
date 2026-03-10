@@ -42,7 +42,7 @@ After onboarding, verify the gateway is running:
 openclaw gateway status
 ```
 
-You should see your gateway URL (`localhost:18789`) and auth token. See the [OpenClaw docs](https://docs.openclaw.ai/getting-started) for more detail.
+You should see your gateway URL (default `localhost:18789`) and auth token. If you use a custom port, `clawport setup` will detect it automatically. See the [OpenClaw docs](https://docs.openclaw.ai/getting-started) for more detail.
 
 ### 2. Install ClawPort
 
@@ -100,7 +100,7 @@ npm run dev
 ClawPort reads your OpenClaw workspace to discover agents, then connects to the gateway for all AI operations:
 
 ```
-Browser  -->  ClawPort (Next.js)  -->  OpenClaw Gateway (localhost:18789)  -->  Claude
+Browser  -->  ClawPort (Next.js)  -->  OpenClaw Gateway (localhost:18789 default)  -->  Claude
                   |                          |
                   |                     Text: /v1/chat/completions (streaming SSE)
                   |                     Vision: openclaw gateway call chat.send (CLI)

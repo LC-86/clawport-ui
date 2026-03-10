@@ -53,7 +53,7 @@ This creates:
 
 ### Verify the Gateway
 
-The gateway is the local server that handles all AI operations. ClawPort talks to it at `localhost:18789`.
+The gateway is the local server that handles all AI operations. ClawPort talks to it at `localhost:18789` by default. If you use a custom port, set `OPENCLAW_GATEWAY_PORT` in `.env.local`.
 
 ```bash
 openclaw gateway status
@@ -68,7 +68,7 @@ openclaw gateway run
 ### Key Concepts
 
 - **Workspace** -- the directory where OpenClaw stores agent files, memory, and configuration. Default: `~/.openclaw/workspace`.
-- **Gateway** -- local server at `localhost:18789` that routes AI calls to Claude, GPT, or local models. Exposes an OpenAI-compatible HTTP endpoint and a WebSocket control plane.
+- **Gateway** -- local server (default `localhost:18789`, configurable) that routes AI calls to Claude, GPT, or local models. Exposes an OpenAI-compatible HTTP endpoint and a WebSocket control plane.
 - **Agents** -- each agent has a `SOUL.md` defining its persona and a directory under `agents/` in your workspace.
 - **SOUL.md** -- the identity file for an agent. Contains its name, role, personality, and operating rules. ClawPort reads these to build the dashboard.
 
@@ -207,7 +207,7 @@ Merge this into your existing config -- don't replace the whole file. If this is
 
 ## 4. Start the Gateway
 
-ClawPort expects the OpenClaw gateway to be running at `localhost:18789`. Start it in a separate terminal:
+ClawPort expects the OpenClaw gateway to be running (default port `18789`). Start it in a separate terminal:
 
 ```bash
 openclaw gateway run
@@ -375,7 +375,7 @@ npx next build
 npm start
 ```
 
-The production server runs on port 3000 by default. The gateway still needs to be running at `localhost:18789`.
+The production server runs on port 3000 by default. The gateway still needs to be running (default port `18789`, or your custom port).
 
 ---
 
@@ -455,7 +455,7 @@ Verify it's reachable:
 curl http://localhost:18789/v1/models
 ```
 
-You should get a JSON response. If not, check that nothing else is using port 18789.
+You should get a JSON response. Replace `18789` with your custom port if you changed it. Set `OPENCLAW_GATEWAY_PORT` in `.env.local` so ClawPort uses the right port.
 
 ### No agents showing up
 

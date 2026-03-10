@@ -123,8 +123,10 @@ npm install -g clawport-ui`}
       <Paragraph>Verify it's reachable:</Paragraph>
       <CodeBlock>{`curl http://localhost:18789/v1/models`}</CodeBlock>
       <Paragraph>
-        You should get a JSON response. If not, check that nothing else is using
-        port 18789.
+        You should get a JSON response. If you changed your gateway port, replace{" "}
+        <InlineCode>18789</InlineCode> with your custom port. Set{" "}
+        <InlineCode>OPENCLAW_GATEWAY_PORT</InlineCode> in your{" "}
+        <InlineCode>.env.local</InlineCode> so ClawPort connects to the right port.
       </Paragraph>
 
       {/* ── Issue 3 ────────────────────────────────────────────── */}

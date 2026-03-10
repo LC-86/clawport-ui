@@ -28,7 +28,7 @@ export function ArchitectureSection() {
           "React 19.2.3, TypeScript 5",
           "Tailwind CSS 4 with CSS custom properties for theming",
           "Vitest 4 with jsdom environment (17 suites, 288 tests)",
-          "OpenAI SDK (routed to Claude via OpenClaw gateway at localhost:18789)",
+          "OpenAI SDK (routed to Claude via OpenClaw gateway, default port 18789)",
           "React Flow (@xyflow/react) for org chart",
         ]}
       />
@@ -51,8 +51,8 @@ export function ArchitectureSection() {
 
       <SubHeading>Chat Pipeline (Text)</SubHeading>
       <CodeBlock>
-        {`Client -> POST /api/chat/[id] -> OpenAI SDK -> localhost:18789/v1/chat/completions -> Claude
-                                         (streaming SSE response)`}
+        {`Client -> POST /api/chat/[id] -> OpenAI SDK -> localhost:<port>/v1/chat/completions -> Claude
+                                         (streaming SSE response, port defaults to 18789)`}
       </CodeBlock>
 
       <SubHeading>Chat Pipeline (Images/Vision)</SubHeading>

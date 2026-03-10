@@ -84,9 +84,13 @@ function run(cmd, args = []) {
   child.on('close', (code) => process.exit(code ?? 0))
 }
 
+function getGatewayPort() {
+  return parseInt(process.env.OPENCLAW_GATEWAY_PORT || '18789', 10)
+}
+
 async function checkGateway() {
   try {
-    const res = await fetch('http://127.0.0.1:18789/', {
+    const res = await fetch(`http://127.0.0.1:${getGatewayPort()}/`, {
       signal: AbortSignal.timeout(3000),
     })
     return res.ok || res.status > 0
@@ -187,10 +191,11 @@ async function cmdStatus() {
   // Check gateway
   const gatewayUp = await checkGateway()
 
+  const gwPort = getGatewayPort()
   if (gatewayUp) {
-    console.log(`  ${green('+')} Gateway reachable at ${dim('localhost:18789')}`)
+    console.log(`  ${green('+')} Gateway reachable at ${dim(`localhost:${gwPort}`)}`)
   } else {
-    console.log(`  ${red('x')} Gateway not responding at ${dim('localhost:18789')}`)
+    console.log(`  ${red('x')} Gateway not responding at ${dim(`localhost:${gwPort}`)}`)
     console.log(`    ${dim('Start it with: openclaw gateway run')}`)
   }
 
@@ -254,7 +259,7 @@ async function cmdDoctor() {
 
   // 4. Gateway reachable
   const gatewayUp = await checkGateway()
-  check(gatewayUp, 'Gateway reachable at localhost:18789', 'Start it with: openclaw gateway run')
+  check(gatewayUp, `Gateway reachable at localhost:${getGatewayPort()}`, 'Start it with: openclaw gateway run')
 
   // 5. Configuration -- .env.local with required vars (package root or ~/.config/clawport-ui)
   const envPath = getEnvLocalPath()

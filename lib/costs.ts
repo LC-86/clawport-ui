@@ -152,7 +152,7 @@ export function detectAnomalies(runCosts: RunCost[], jobSummaries: JobCostSummar
     const med = medianMap.get(rc.jobId) ?? 0
     if (med === 0) continue
     const ratio = rc.totalTokens / med
-    if (ratio > 5) {
+    if (ratio > 3) {
       anomalies.push({
         ts: rc.ts,
         jobId: rc.jobId,
@@ -311,22 +311,25 @@ export function computeOptimizationInsights(
 
   // 5. High output-to-input ratio (verbose responses)
   // Output costs 5x input across all Claude models ($15 vs $3 for Sonnet, $25 vs $5 for Opus, $5 vs $1 for Haiku)
-  // Extended thinking tokens are also billed as output and can be significant
+  // Use effective input (input + cache) as denominator since cache reads are real context
   const totalOutputTokens = runCosts.reduce((s, r) => s + r.outputTokens, 0)
-  const outputRatio = totalInputTokens > 0 ? totalOutputTokens / totalInputTokens : 0
+  const totalCacheTokens = runCosts.reduce((s, r) => s + r.cacheTokens, 0)
+  const effectiveInputTokens = totalInputTokens + totalCacheTokens
+  const outputRatio = effectiveInputTokens > 0 ? totalOutputTokens / effectiveInputTokens : 0
   if (outputRatio > 1.5 && runCosts.length >= 5) {
     const excessOutputCost = runCosts.reduce((s, r) => {
       const pricing = getModelPricing(r.model)
-      const excessTokens = Math.max(0, r.outputTokens - r.inputTokens)
+      const effectiveIn = r.inputTokens + r.cacheTokens
+      const excessTokens = Math.max(0, r.outputTokens - effectiveIn)
       return s + (excessTokens * pricing.outputPer1M) / 1_000_000
     }, 0)
     insights.push({
       id: `opt-${++id}`,
       severity: 'warning',
       title: 'Output tokens exceed input',
-      description: `Output is ${outputRatio.toFixed(1)}x input tokens. Output costs 5x more per token across all models. Set max_tokens limits, request concise responses, or use structured JSON output. Note: extended thinking tokens are billed as output -- use effort: "low" or "medium" for simple tasks.`,
+      description: `Output is ${outputRatio.toFixed(1)}x effective input tokens (including cache reads). Output costs 5x more per token. Set max_tokens limits, request concise responses, or use structured JSON output. Note: extended thinking tokens are billed as output -- use effort: "low" or "medium" for simple tasks.`,
       projectedSavings: excessOutputCost * 0.3,
-      action: `My agents are generating ${outputRatio.toFixed(1)}x more output tokens than input tokens, and output costs 5x more per token. How can I reduce output? Should I set max_tokens limits? Are any jobs using extended thinking unnecessarily? Which jobs are most verbose? Consider switching to effort: "low" for simple tasks.`,
+      action: `My agents are generating ${outputRatio.toFixed(1)}x more output tokens than effective input tokens, and output costs 5x more per token. How can I reduce output? Should I set max_tokens limits? Are any jobs using extended thinking unnecessarily? Which jobs are most verbose? Consider switching to effort: "low" for simple tasks.`,
     })
   }
 
@@ -348,13 +351,14 @@ export function computeOptimizationInsights(
   // Thinking tokens are billed as output (5x input price) and can be very large
   // Check for jobs with unusually high output relative to their input
   const highThinkingJobs = jobCosts.filter(j => {
-    return j.totalOutputTokens > j.totalInputTokens * 3 && j.runs >= 2
+    const effectiveIn = j.totalInputTokens + j.totalCacheTokens
+    return j.totalOutputTokens > effectiveIn * 3 && j.runs >= 2
   })
   if (highThinkingJobs.length > 0) {
     const names = highThinkingJobs.slice(0, 3).map(j => j.jobId).join(', ')
     const thinkingExcessCost = highThinkingJobs.reduce((s, j) => {
-      // Estimate: output beyond 1:1 ratio may be thinking tokens
-      const excessOutput = Math.max(0, j.totalOutputTokens - j.totalInputTokens)
+      const effectiveIn = j.totalInputTokens + j.totalCacheTokens
+      const excessOutput = Math.max(0, j.totalOutputTokens - effectiveIn)
       return s + (excessOutput * 15) / 1_000_000 * 0.3 // conservative at Sonnet rates
     }, 0)
     insights.push({
@@ -399,25 +403,35 @@ export function computeOptimizationScore(
 ): OptimizationScore {
   if (runCosts.length === 0) return { overall: 100, cacheScore: 100, tieringScore: 100, anomalyScore: 100, efficiencyScore: 100 }
 
-  // Cache score: 100 if >40% cache ratio, scales down linearly
+  // Cache score: 80%+ cache read ratio = 100, linear scale down
+  // Source: OpenRouter docs recommend 80%+ hit rate; real-world Claude Code sessions show 90%+
   const totalInput = runCosts.reduce((s, r) => s + r.inputTokens, 0)
   const cacheRatio = totalInput > 0 ? cacheSavings.cacheTokens / (totalInput + cacheSavings.cacheTokens) : 0
-  const cacheScore = Math.min(100, Math.round(cacheRatio * 250)) // 40% cache ratio = 100
+  const cacheScore = Math.min(100, Math.round(cacheRatio * 125))
 
-  // Tiering score: penalize for expensive model overuse
+  // Tiering score: penalize Opus overuse, but Opus 4.6 is only 1.67x Sonnet so softer curve
+  // Source: ClaudeFast recommends <15% Opus; Anthropic docs say reserve Opus for complex reasoning
   const expensiveCount = runCosts.filter(r => EXPENSIVE_MODELS.some(m => r.model.startsWith(m))).length
   const expensivePct = expensiveCount / runCosts.length
-  const tieringScore = Math.round(Math.max(0, 100 - expensivePct * 200)) // >50% expensive = 0
+  const tieringScore = Math.min(100, Math.round(Math.max(0, 100 - expensivePct * 120)))
 
-  // Anomaly score: 100 if no anomalies, drops per anomaly
-  const anomalyScore = Math.max(0, 100 - anomalies.length * 20)
+  // Anomaly score: percentage-based so it scales with run count
+  // Source: Token Budget Pattern recommends flagging runs >3x p95; we use >3x median
+  const anomalyPct = anomalies.length / runCosts.length
+  const anomalyScore = Math.min(100, Math.round(Math.max(0, 100 - anomalyPct * 500)))
 
-  // Efficiency: output/input ratio -- ideal is < 1.0
+  // Efficiency: output / effective input ratio -- coding agents typically 0.2-1.5x
+  // Source: Efficient Agents paper (arXiv:2508.02694) shows Claude at ~0.79x for agentic tasks
+  // Use inputTokens + cacheTokens as denominator since cache reads are real context processed
+  // (input_tokens from the API is only non-cached input; with good caching it can be tiny)
   const totalOutput = runCosts.reduce((s, r) => s + r.outputTokens, 0)
-  const outputRatio = totalInput > 0 ? totalOutput / totalInput : 0
-  const efficiencyScore = Math.min(100, Math.round(Math.max(0, 100 - (outputRatio - 0.5) * 50)))
+  const totalCache = runCosts.reduce((s, r) => s + r.cacheTokens, 0)
+  const effectiveInput = totalInput + totalCache
+  const outputRatio = effectiveInput > 0 ? totalOutput / effectiveInput : 0
+  const efficiencyScore = Math.min(100, Math.round(Math.max(0, (1 - Math.max(0, outputRatio - 0.3) / 4.7) * 100)))
 
-  const overall = Math.round((cacheScore + tieringScore + anomalyScore + efficiencyScore) / 4)
+  // Weighted average: model routing and cache have highest controllable impact
+  const overall = Math.round(tieringScore * 0.30 + cacheScore * 0.25 + efficiencyScore * 0.25 + anomalyScore * 0.20)
 
   return { overall, cacheScore, tieringScore, anomalyScore, efficiencyScore }
 }
@@ -427,9 +441,13 @@ export function computeOptimizationScore(
 export function buildCostAnalysisPrompt(summary: CostSummary, jobNames: Record<string, string>): string {
   const jn = (id: string) => jobNames[id] || id
 
-  const jobsSummary = summary.jobCosts.slice(0, 10).map(j =>
-    `  ${jn(j.jobId)}: ${j.runs} runs, $${j.totalCost.toFixed(2)} total, ${j.totalCacheTokens > 0 ? `${Math.round(j.totalCacheTokens / (j.totalInputTokens + j.totalCacheTokens) * 100)}% cached` : 'no caching'}`
-  ).join('\n')
+  const jobsSummary = summary.jobCosts.slice(0, 10).map(j => {
+    const effectiveIn = j.totalInputTokens + j.totalCacheTokens
+    const cacheInfo = effectiveIn > 0
+      ? `${Math.round(j.totalCacheTokens / effectiveIn * 100)}% cached`
+      : 'no caching'
+    return `  ${jn(j.jobId)}: ${j.runs} runs, $${j.totalCost.toFixed(2)} total, model: ${j.jobId}, ${cacheInfo}`
+  }).join('\n')
 
   const modelSummary = summary.modelBreakdown.map(m =>
     `  ${m.model}: ${m.pct.toFixed(0)}% of tokens`
@@ -441,26 +459,29 @@ export function buildCostAnalysisPrompt(summary: CostSummary, jobNames: Record<s
       ).join('\n')
     : '  None detected'
 
-  return `You are a cost optimization advisor for an AI agent pipeline system using Claude models via OpenClaw. Analyze the following cost data and provide actionable recommendations.
+  return `You are a cost optimization advisor for Claude Code agent teams running on OpenClaw. The user is likely on a Claude Max subscription ($100-200/month) with a 5-hour rolling usage window and weekly cap. Their primary constraint is throughput, not dollar cost. Help them get more done within their rate limits.
+
+## Context: Why This Matters
+Most Max plan users hit their 5-hour window or weekly cap before they hit a dollar amount. Every token saved is throughput reclaimed. Model selection and context management are the two highest-leverage optimizations because:
+- Output tokens cost 5x input tokens ($15 vs $3 per MTok on Sonnet)
+- Extended thinking tokens are billed as output (the full internal reasoning, not just the summary)
+- Cache reads cost 0.1x input (90% savings) AND do not count against rate limits
+- Haiku 4.5 is 3x cheaper than Sonnet with minimal quality loss on simple tasks
 
 ## Pricing Reference (per 1M tokens)
-| Model | Input | Output | Cache Read (0.1x) | Cache Write 5-min (1.25x) | Cache Write 1-hr (2x) |
-|-------|-------|--------|-------------------|---------------------------|------------------------|
-| Opus 4.6 | $5 | $25 | $0.50 | $6.25 | $10 |
-| Sonnet 4.6 | $3 | $15 | $0.30 | $3.75 | $6 |
-| Haiku 4.5 | $1 | $5 | $0.10 | $1.25 | $2 |
-- Batch API: 50% discount on all tokens (no minimum, processed within 24h)
-- Extended thinking: billed as output tokens (full internal thinking, not summary)
-- Minimum cacheable tokens: Opus/Haiku 4,096; Sonnet 4.6 2,048; Sonnet 4.5 1,024
+| Model | Input | Output | Cache Read | Cache Write (5min) |
+|-------|-------|--------|------------|-------------------|
+| Opus 4.6 | $5 | $25 | $0.50 | $6.25 |
+| Sonnet 4.6 | $3 | $15 | $0.30 | $3.75 |
+| Haiku 4.5 | $1 | $5 | $0.10 | $1.25 |
 
-## Key Metrics
+## This User's Data
 - Total estimated cost: $${summary.totalCost.toFixed(2)}
 - This week: $${summary.weekOverWeek.thisWeek.toFixed(2)} (last week: $${summary.weekOverWeek.lastWeek.toFixed(2)})
-- Cache savings so far: $${summary.cacheSavings.estimatedSavings.toFixed(2)} (${summary.cacheSavings.cacheTokens} cache tokens, 90% savings on reads)
-- Optimization score: ${summary.optimizationScore.overall}/100
-- Anomalies: ${summary.anomalies.length}
+- Cache savings: $${summary.cacheSavings.estimatedSavings.toFixed(2)} (${(summary.cacheSavings.cacheTokens / 1_000_000).toFixed(1)}M cache tokens)
+- Optimization score: ${summary.optimizationScore.overall}/100 (cache: ${summary.optimizationScore.cacheScore}, tiering: ${summary.optimizationScore.tieringScore}, anomaly: ${summary.optimizationScore.anomalyScore}, efficiency: ${summary.optimizationScore.efficiencyScore})
 
-## Top Jobs by Cost
+## Jobs
 ${jobsSummary || '  No job data'}
 
 ## Model Distribution
@@ -469,20 +490,21 @@ ${modelSummary || '  No model data'}
 ## Anomalies
 ${anomalySummary}
 
-## Optimization Scores
-- Cache: ${summary.optimizationScore.cacheScore}/100
-- Model tiering: ${summary.optimizationScore.tieringScore}/100
-- Anomaly: ${summary.optimizationScore.anomalyScore}/100
-- Efficiency: ${summary.optimizationScore.efficiencyScore}/100
+## Response Format
+Give a short, action-driven assessment. Use this structure:
 
-Provide a concise assessment covering:
-1. **Biggest Savings Opportunity** -- the single highest-impact change with dollar estimate
-2. **Cache Strategy** -- is caching configured? Recommend TTL (5-min vs 1-hr), prompt structure (tools > system > messages), and minimum token thresholds
-3. **Model Selection** -- which jobs should use Opus vs Sonnet vs Haiku? Consider task complexity
-4. **Batch API** -- which cron jobs could use Batch API for 50% savings?
-5. **Quick Wins** -- 2-3 specific config changes that can be made today
+1. **Status** -- One sentence: how healthy is this setup? Frame around throughput, not dollars.
+2. **Top Recommendation** -- The single highest-impact change. Be specific: name the job, the current model, what it should be, and the estimated savings.
+3. **Agent-by-Agent** -- For each job, one line: keep current model, or switch to X and why. Use a simple list, not a table.
+4. **Context Diet** -- Are any agents loading too much context? Recommend CLAUDE.md trimming, .claudeignore patterns, or targeted file reads.
+5. **Quick Config Changes** -- 2-3 specific things they can change right now.
 
-Be specific with job names and dollar amounts. Include OpenClaw config snippets where relevant. Keep it under 400 words.`
+Rules:
+- Be direct and specific. Name jobs, not categories.
+- Frame savings as "X% of your 5-hour window reclaimed" not just dollar amounts.
+- Do not include YAML or JSON config snippets unless the user asks.
+- Do not hedge. If a job should use Haiku, say so.
+- Keep it under 350 words. Brevity is a feature.`
 }
 
 // ── Master function ──────────────────────────────────────────

@@ -402,21 +402,23 @@ describe('computeOptimizationScore', () => {
       inputTokens: 1000, outputTokens: 200, totalTokens: 1200, cacheTokens: 0, minCost: 0.018,
     }))
     const score = computeOptimizationScore(runs, [], { cacheTokens: 0, estimatedSavings: 0 })
+    // 100% Opus → 100 - 100*120 = clamped to 0
     expect(score.tieringScore).toBe(0)
   })
 
-  it('penalizes per anomaly', () => {
-    const runs: RunCost[] = [{
-      ts: 1000, jobId: 'a', model: 'claude-sonnet-4-6', provider: 'anthropic',
+  it('penalizes anomalies by percentage of runs', () => {
+    const runs: RunCost[] = Array.from({ length: 10 }, (_, i) => ({
+      ts: 1000 + i, jobId: 'a', model: 'claude-sonnet-4-6', provider: 'anthropic',
       inputTokens: 1000, outputTokens: 200, totalTokens: 1200, cacheTokens: 500, minCost: 0.006,
-    }]
+    }))
     const anomalies: TokenAnomaly[] = [
       { ts: 1, jobId: 'a', totalTokens: 10000, medianTokens: 1000, ratio: 10 },
       { ts: 2, jobId: 'a', totalTokens: 10000, medianTokens: 1000, ratio: 10 },
       { ts: 3, jobId: 'a', totalTokens: 10000, medianTokens: 1000, ratio: 10 },
     ]
+    // 3 anomalies out of 10 runs = 30% → 100 - 0.3*500 = clamped to 0
     const score = computeOptimizationScore(runs, anomalies, { cacheTokens: 500, estimatedSavings: 0.001 })
-    expect(score.anomalyScore).toBe(40) // 100 - 3*20
+    expect(score.anomalyScore).toBeLessThanOrEqual(0)
   })
 
   it('rewards high cache ratio', () => {
@@ -439,17 +441,17 @@ describe('buildCostAnalysisPrompt', () => {
     expect(prompt).toContain('Total estimated cost')
     expect(prompt).toContain('Daily Report')
     expect(prompt).toContain('Optimization score')
-    expect(prompt).toContain('Biggest Savings Opportunity')
-    expect(prompt).toContain('Cache Strategy')
-    expect(prompt).toContain('Model Selection')
+    // Response format sections
+    expect(prompt).toContain('Top Recommendation')
+    expect(prompt).toContain('Context Diet')
+    expect(prompt).toContain('Agent-by-Agent')
     // Should include pricing reference table
     expect(prompt).toContain('Pricing Reference')
     expect(prompt).toContain('Opus 4.6')
-    expect(prompt).toContain('Batch API')
-    expect(prompt).toContain('50%')
-    // Should mention cache read/write costs
-    expect(prompt).toContain('Cache Read (0.1x)')
-    expect(prompt).toContain('Minimum cacheable tokens')
+    expect(prompt).toContain('Cache Read')
+    // Framing for Max plan users
+    expect(prompt).toContain('5-hour')
+    expect(prompt).toContain('throughput')
   })
 
   it('falls back to jobId when no name provided', () => {

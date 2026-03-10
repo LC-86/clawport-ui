@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Agent, CostSummary, CronJob, RunCost, ClaudeCodeUsage } from '@/lib/types'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AlertTriangle, TrendingDown, TrendingUp, Activity, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react'
+import { AlertTriangle, TrendingDown, TrendingUp, Activity, MessageSquare, ChevronDown } from 'lucide-react'
 import { generateId } from '@/lib/id'
 import { buildCostAnalysisPrompt } from '@/lib/costs'
 import { renderMarkdown } from '@/lib/sanitize'
@@ -13,7 +13,7 @@ import { DailyCostChart } from './DailyCostChart'
 import { TokenDonut } from './TokenDonut'
 import { TopCrons } from './TopCrons'
 import { RunDetailTable } from './RunDetailTable'
-import { OptScoreRing, InsightCard } from './OptimizationPanel'
+import { OptimizationCard } from './OptimizationPanel'
 import { ClaudeUsageRow } from './ClaudeUsageRow'
 
 /* ── Chat message type ───────────────────────────────────────── */
@@ -38,8 +38,6 @@ export function CostsPage() {
   const [analysisOpen, setAnalysisOpen] = useState(false)
   const [analysisStreaming, setAnalysisStreaming] = useState(false)
   const [analysisContent, setAnalysisContent] = useState('')
-  const analysisRef = useRef<HTMLDivElement>(null)
-  const chatEndRef = useRef<HTMLDivElement>(null)
   const chatTextareaRef = useRef<HTMLTextAreaElement>(null)
   const [chatMessages, setChatMessages] = useState<CostChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
@@ -47,9 +45,6 @@ export function CostsPage() {
 
   // Claude Code usage state
   const [claudeUsage, setClaudeUsage] = useState<ClaudeCodeUsage | null>(null)
-
-  // Insights collapse
-  const [insightsExpanded, setInsightsExpanded] = useState(false)
 
   const rootAgent = useMemo(
     () => agents.find(a => a.reportsTo === null) || agents[0] || null,
@@ -109,14 +104,6 @@ export function CostsPage() {
     return () => es.close()
   }, [])
 
-  // Auto-scroll analysis
-  useEffect(() => {
-    if (analysisRef.current) analysisRef.current.scrollTop = analysisRef.current.scrollHeight
-  }, [analysisContent])
-
-  useEffect(() => {
-    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' })
-  }, [chatMessages])
 
   const jobName = (id: string) => jobNames[id] || id
 
@@ -375,8 +362,8 @@ export function CostsPage() {
             {/* ── Claude Code Usage ──────────────────────────────── */}
             {claudeUsage && <ClaudeUsageRow usage={claudeUsage} />}
 
-            {/* ── Summary cards (4-col) ──────────────────────────── */}
-            <div className="costs-summary-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+            {/* ── Summary cards ────────────────────────────────── */}
+            <div className="costs-summary-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
               {/* Total Estimated Cost */}
               <SummaryCard label="Total Estimated Cost">
                 <div className="flex items-center" style={{ gap: 'var(--space-2)' }}>
@@ -442,153 +429,41 @@ export function CostsPage() {
             </div>
 
             {/* ── Optimization Score + Insights ─────────────────── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 'var(--space-4)', marginBottom: 'var(--space-4)' }}
-              className="opt-row">
+            <OptimizationCard
+              score={data.optimizationScore}
+              insights={data.insights}
+              totalSavings={totalProjectedSavings}
+              jobName={jobName}
+              onAction={handleInsightAction}
+            />
 
-              {/* Score card */}
-              <div style={{
-                background: 'var(--material-regular)',
-                border: '1px solid var(--separator)',
-                borderRadius: 'var(--radius-md)',
-                padding: 'var(--space-4)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 'var(--space-3)',
-              }}>
-                <div style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)', fontWeight: 'var(--weight-medium)' }}>
-                  Optimization Score
-                </div>
-                <OptScoreRing score={data.optimizationScore.overall} size={80} />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px', width: '100%' }}>
-                  {([
-                    ['Cache', data.optimizationScore.cacheScore],
-                    ['Tiering', data.optimizationScore.tieringScore],
-                    ['Anomaly', data.optimizationScore.anomalyScore],
-                    ['Efficiency', data.optimizationScore.efficiencyScore],
-                  ] as [string, number][]).map(([label, score]) => (
-                    <div key={label} className="flex items-center" style={{ gap: 4, fontSize: 'var(--text-caption2)' }}>
-                      <div style={{
-                        width: 32, height: 4, borderRadius: 2,
-                        background: 'var(--fill-tertiary)', overflow: 'hidden', flexShrink: 0,
-                      }}>
-                        <div style={{
-                          width: `${score}%`, height: '100%', borderRadius: 2,
-                          background: score >= 75 ? 'var(--system-green)' : score >= 50 ? 'var(--system-orange)' : 'var(--system-red)',
-                          transition: 'width 600ms ease',
-                        }} />
-                      </div>
-                      <span style={{ color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>{label}</span>
-                      <span style={{ color: 'var(--text-secondary)', fontWeight: 600, marginLeft: 'auto' }}>{score}</span>
-                    </div>
-                  ))}
-                </div>
-                {totalProjectedSavings > 0 && (
-                  <div style={{
-                    marginTop: 'var(--space-1)',
-                    padding: '4px 10px',
-                    borderRadius: 'var(--radius-sm)',
-                    background: 'rgba(48,209,88,0.10)',
-                    fontSize: 'var(--text-caption1)',
-                    fontWeight: 600,
-                    color: 'var(--system-green)',
-                    textAlign: 'center',
-                  }}>
-                    Potential savings: {fmtCost(totalProjectedSavings)}/period
-                  </div>
-                )}
-              </div>
-
-              {/* Insights list */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                <div style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)', fontWeight: 'var(--weight-medium)', marginBottom: 2 }}>
-                  Optimization Insights
-                </div>
-                {data.insights.length === 0 ? (
-                  <div style={{
-                    padding: 'var(--space-4)',
-                    background: 'var(--material-regular)',
-                    border: '1px solid var(--separator)',
-                    borderRadius: 'var(--radius-md)',
-                    textAlign: 'center',
-                    fontSize: 'var(--text-footnote)',
-                    color: 'var(--system-green)',
-                  }}>
-                    All clear -- no optimization issues detected
-                  </div>
-                ) : (
-                  <>
-                    {(insightsExpanded ? data.insights : data.insights.slice(0, 2)).map(insight => (
-                      <div key={insight.id} style={{ opacity: 1, transition: 'opacity 150ms ease' }}>
-                        <InsightCard insight={insight} onAction={handleInsightAction} />
-                      </div>
-                    ))}
-                    {data.insights.length > 2 && (
-                      <button
-                        onClick={() => setInsightsExpanded(prev => !prev)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '6px 0',
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          fontSize: 'var(--text-caption1)',
-                          fontWeight: 'var(--weight-medium)',
-                          color: 'var(--accent)',
-                        }}
-                      >
-                        {insightsExpanded ? (
-                          <><ChevronUp size={12} /> Show less</>
-                        ) : (
-                          <><ChevronDown size={12} /> Show all {data.insights.length} insights</>
-                        )}
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* ── AI Cost Analysis ────────────────────────────────── */}
+            {/* ── Agent Optimizer ─────────────────────────────────── */}
             <div style={{
               background: 'var(--material-regular)',
               border: '1px solid var(--separator)',
-              borderRadius: 'var(--radius-md)',
+              borderRadius: 12,
               marginBottom: 'var(--space-4)',
               overflow: 'hidden',
             }}>
-              <button
-                onClick={() => {
-                  if (!analysisOpen) {
-                    setAnalysisOpen(true)
-                    if (!analysisContent && !analysisStreaming) runAnalysis()
-                  } else {
-                    setAnalysisOpen(!analysisOpen)
-                  }
-                }}
-                className="focus-ring"
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--space-3)',
-                  padding: 'var(--space-3) var(--space-4)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 'var(--text-footnote)',
-                  fontWeight: 'var(--weight-semibold)',
-                  color: 'var(--text-primary)',
-                }}
-              >
-                <Activity size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                AI Cost Analysis
+              {/* Header */}
+              <div style={{
+                padding: '16px 20px',
+                display: 'flex', alignItems: 'center', gap: 12,
+                borderBottom: analysisOpen ? '1px solid var(--separator)' : undefined,
+              }}>
+                <Activity size={18} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                    Agent Optimizer
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                    AI-powered analysis of your agent costs and throughput
+                  </div>
+                </div>
                 {analysisStreaming && (
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6,
-                    fontSize: 'var(--text-caption1)', color: 'var(--accent)', fontWeight: 500,
+                    fontSize: 12, color: 'var(--accent)', fontWeight: 500,
                   }}>
                     <span style={{
                       width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)',
@@ -597,33 +472,46 @@ export function CostsPage() {
                     Analyzing...
                   </span>
                 )}
-                {analysisContent && !analysisStreaming && (
-                  <span style={{
-                    fontSize: 'var(--text-caption2)', fontWeight: 600,
-                    padding: '1px 8px', borderRadius: 10,
-                    background: 'rgba(48,209,88,0.12)', color: 'var(--system-green)',
-                  }}>
-                    Complete
-                  </span>
+                {!analysisOpen && !analysisContent && !analysisStreaming && (
+                  <button
+                    onClick={() => { setAnalysisOpen(true); runAnalysis() }}
+                    className="btn-ghost focus-ring"
+                    style={{
+                      padding: '6px 16px', borderRadius: 8,
+                      fontSize: 13, fontWeight: 600,
+                      background: 'var(--accent)', color: 'white',
+                      border: 'none', cursor: 'pointer',
+                    }}
+                  >
+                    Analyze
+                  </button>
                 )}
-                <ChevronDown
-                  size={14}
-                  style={{
-                    marginLeft: 'auto', color: 'var(--text-tertiary)',
-                    transform: analysisOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 200ms ease',
-                  }}
-                />
-              </button>
+                {(analysisOpen || analysisContent) && (
+                  <button
+                    onClick={() => setAnalysisOpen(!analysisOpen)}
+                    className="focus-ring"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+                  >
+                    <ChevronDown
+                      size={16}
+                      style={{
+                        color: 'var(--text-tertiary)',
+                        transform: analysisOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 200ms ease',
+                      }}
+                    />
+                  </button>
+                )}
+              </div>
 
               {analysisOpen && (
-                <div style={{ borderTop: '1px solid var(--separator)' }}>
-                  {/* Analysis content */}
+                <div>
+                  {/* Loading skeleton */}
                   {analysisStreaming && !analysisContent && (
-                    <div style={{ padding: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {[180, 220, 160, 200].map((w, i) => (
+                    <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {[180, 240, 160, 220, 140].map((w, i) => (
                         <div key={i} style={{
-                          width: w, height: 12, borderRadius: 4,
+                          width: w, maxWidth: '100%', height: 12, borderRadius: 4,
                           background: 'var(--fill-tertiary)',
                           animation: `shimmer 1.6s ease-in-out ${i * 0.15}s infinite`,
                         }} />
@@ -631,42 +519,76 @@ export function CostsPage() {
                     </div>
                   )}
 
+                  {/* Analysis content */}
                   {analysisContent && (
                     <div
-                      ref={analysisRef}
                       className="markdown-body"
                       style={{
-                        padding: 'var(--space-4)',
-                        maxHeight: 480,
+                        padding: '16px 20px',
+                        maxHeight: 520,
                         overflowY: 'auto',
-                        fontSize: 'var(--text-footnote)',
-                        lineHeight: 1.6,
+                        fontSize: 14,
+                        lineHeight: 1.65,
                         color: 'var(--text-primary)',
                       }}
                       dangerouslySetInnerHTML={{ __html: renderMarkdown(analysisContent) }}
                     />
                   )}
 
+                  {/* Suggested actions (before first analysis or after completion) */}
+                  {!analysisContent && !analysisStreaming && (
+                    <div style={{ padding: '12px 20px 16px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+                        Ask about
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {[
+                          'Which agents should switch to Haiku?',
+                          'How do I reduce my 5-hour window usage?',
+                          'Show me my most expensive agent and how to fix it',
+                          'What thinking effort should each agent use?',
+                        ].map(q => (
+                          <button
+                            key={q}
+                            onClick={() => { setAnalysisOpen(true); runAnalysis(); }}
+                            className="btn-ghost focus-ring"
+                            style={{
+                              padding: '5px 12px', borderRadius: 14,
+                              fontSize: 12, fontWeight: 500,
+                              background: 'var(--fill-secondary)',
+                              border: '1px solid var(--separator)',
+                              color: 'var(--text-secondary)',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Inline chat (after analysis complete) */}
                   {analysisContent && !analysisStreaming && (
                     <>
-                      <div style={{ borderTop: '1px solid var(--separator)' }} />
+                      <div style={{ height: 1, background: 'var(--separator)' }} />
 
                       {/* Chat messages */}
                       {chatMessages.length > 0 && (
-                        <div style={{ maxHeight: 300, overflowY: 'auto', padding: 'var(--space-3) var(--space-4)' }}>
+                        <div style={{ maxHeight: 320, overflowY: 'auto', padding: '12px 20px' }}>
                           {chatMessages.map(msg => (
                             <div key={msg.id} style={{
-                              marginBottom: 'var(--space-3)',
+                              marginBottom: 12,
                               display: 'flex',
                               justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
                             }}>
                               <div style={{
                                 maxWidth: '85%',
-                                padding: 'var(--space-2) var(--space-3)',
-                                borderRadius: 'var(--radius-md, 10px)',
-                                fontSize: 'var(--text-footnote)',
-                                lineHeight: 1.5,
+                                padding: '8px 14px',
+                                borderRadius: 12,
+                                fontSize: 14,
+                                lineHeight: 1.55,
                                 ...(msg.role === 'user' ? {
                                   background: 'var(--accent)',
                                   color: 'white',
@@ -693,17 +615,41 @@ export function CostsPage() {
                               </div>
                             </div>
                           ))}
-                          <div ref={chatEndRef} />
+                        </div>
+                      )}
+
+                      {/* Follow-up suggestions */}
+                      {chatMessages.length === 0 && (
+                        <div style={{ padding: '8px 20px 4px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {[
+                            'Show me the config changes',
+                            'Which agents need less thinking effort?',
+                            'How do I trim agent context?',
+                          ].map(q => (
+                            <button
+                              key={q}
+                              onClick={() => sendChatMessage(q)}
+                              className="btn-ghost focus-ring"
+                              style={{
+                                padding: '4px 10px', borderRadius: 12,
+                                fontSize: 11, fontWeight: 500,
+                                background: 'var(--fill-secondary)',
+                                border: '1px solid var(--separator)',
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer', whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {q}
+                            </button>
+                          ))}
                         </div>
                       )}
 
                       {/* Chat input */}
                       <div style={{
-                        display: 'flex', alignItems: 'flex-end', gap: 'var(--space-2)',
-                        padding: 'var(--space-3) var(--space-4)',
-                        borderTop: chatMessages.length > 0 ? '1px solid var(--separator)' : undefined,
+                        display: 'flex', alignItems: 'flex-end', gap: 8,
+                        padding: '10px 20px 16px',
                       }}>
-                        <MessageSquare size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginBottom: 6 }} />
                         <textarea
                           ref={chatTextareaRef}
                           value={chatInput}
@@ -714,16 +660,16 @@ export function CostsPage() {
                               sendChatMessage()
                             }
                           }}
-                          placeholder="Ask about cost optimization..."
+                          placeholder="Ask a follow-up..."
                           disabled={chatStreaming}
                           rows={1}
                           style={{
                             flex: 1, resize: 'none',
                             background: 'var(--fill-tertiary)',
                             border: '1px solid var(--separator)',
-                            borderRadius: 'var(--radius-sm)',
-                            padding: '6px 10px',
-                            fontSize: 'var(--text-footnote)',
+                            borderRadius: 8,
+                            padding: '8px 12px',
+                            fontSize: 13,
                             color: 'var(--text-primary)',
                             outline: 'none',
                             lineHeight: 1.4,
@@ -735,9 +681,9 @@ export function CostsPage() {
                           disabled={chatStreaming || !chatInput.trim()}
                           className="btn-ghost focus-ring"
                           style={{
-                            padding: '6px 12px',
-                            borderRadius: 'var(--radius-sm)',
-                            fontSize: 'var(--text-caption1)',
+                            padding: '8px 14px',
+                            borderRadius: 8,
+                            fontSize: 13,
                             fontWeight: 600,
                             background: 'var(--accent)',
                             color: 'white',
@@ -759,7 +705,7 @@ export function CostsPage() {
             <TopCrons jobCosts={data.jobCosts} jobName={jobName} />
 
             {/* ── Charts row: daily cost + token donut ────────────── */}
-            <div className="charts-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
+            <div className="charts-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
               <DailyCostChart dailyCosts={data.dailyCosts} />
               <TokenDonut data={data} />
             </div>
@@ -873,16 +819,7 @@ export function CostsPage() {
           box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
         @media (max-width: 768px) {
-          .costs-summary-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
           .top-crons-grid {
-            grid-template-columns: 1fr !important;
-          }
-          .charts-row {
-            grid-template-columns: 1fr !important;
-          }
-          .opt-row {
             grid-template-columns: 1fr !important;
           }
           .usage-row {
@@ -890,9 +827,6 @@ export function CostsPage() {
           }
         }
         @media (max-width: 640px) {
-          .costs-summary-grid {
-            grid-template-columns: 1fr !important;
-          }
           .hidden-mobile { display: none !important; }
         }
       `}</style>

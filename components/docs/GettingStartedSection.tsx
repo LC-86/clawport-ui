@@ -36,7 +36,8 @@ export function GettingStartedSection() {
               OpenClaw gateway running
             </strong>{" "}
             -- ClawPort talks to the gateway at{" "}
-            <InlineCode>localhost:18789</InlineCode>
+            <InlineCode>localhost:18789</InlineCode> by default (configurable via{" "}
+            <InlineCode>OPENCLAW_GATEWAY_PORT</InlineCode>)
           </>,
         ]}
       />
@@ -159,7 +160,7 @@ npm run dev`}
       <SubHeading>Start the Gateway</SubHeading>
       <Paragraph>
         ClawPort expects the OpenClaw gateway running at{" "}
-        <InlineCode>localhost:18789</InlineCode>. Start it in a separate terminal:
+        <InlineCode>localhost:18789</InlineCode> (or your custom port). Start it in a separate terminal:
       </Paragraph>
       <CodeBlock>{`openclaw gateway run`}</CodeBlock>
       <Callout type="warning">
