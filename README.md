@@ -8,7 +8,7 @@
 
 [![npm version](https://img.shields.io/npm/v/clawport-ui.svg)](https://www.npmjs.com/package/clawport-ui)
 [![license](https://img.shields.io/npm/l/clawport-ui.svg)](LICENSE)
-[![tests](https://img.shields.io/badge/tests-536%20passed-brightgreen)](#testing)
+[![tests](https://img.shields.io/badge/tests-771%20passed-brightgreen)](#testing)
 
 [Website](https://clawport.dev) | [Setup Guide](SETUP.md) | [API Docs](docs/API.md) | [npm](https://www.npmjs.com/package/clawport-ui)
 
@@ -171,7 +171,7 @@ clawport help     # Show usage
 ## Testing
 
 ```bash
-npm test             # 536 tests across 24 suites (Vitest)
+npm test             # 771 tests across 31 suites (Vitest)
 npx tsc --noEmit     # Type-check (zero errors)
 npx next build       # Production build
 ```

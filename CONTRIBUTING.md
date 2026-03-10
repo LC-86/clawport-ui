@@ -92,6 +92,43 @@ Keep the subject under 72 characters. If you need to elaborate, leave a blank li
 - **Tests included.** New behavior should have corresponding tests. Bug fixes should include a test that would have caught the bug.
 - **No unrelated changes.** Resist the urge to fix formatting or rename variables in files you are not otherwise touching. Those are welcome as separate PRs.
 
+## Before You Submit
+
+The npm `prepublishOnly` hook runs `npx tsc --noEmit && vitest run`, so your code must pass both type-checking and the full test suite. Save yourself a round-trip by running these locally before pushing:
+
+```bash
+npx tsc --noEmit     # Zero type errors
+npm test             # All 771 tests pass
+npx next build       # Clean production build (optional but recommended)
+```
+
+## Contributor Credit
+
+When we merge your PR, we add a `Co-Authored-By` trailer to the merge commit so GitHub attributes it to your profile. If you want to ensure your contribution shows up, include your GitHub no-reply email in the PR description:
+
+```
+Co-Authored-By: your-username <your-username@users.noreply.github.com>
+```
+
+## Architecture Overview
+
+If you want to understand the codebase before diving in, these resources will help:
+
+| Document | What it covers |
+|----------|---------------|
+| [CLAUDE.md](CLAUDE.md) | Full architecture guide: data flows, component map, conventions, common tasks |
+| [docs/API.md](docs/API.md) | REST API reference for all endpoints |
+| [docs/COMPONENTS.md](docs/COMPONENTS.md) | UI component catalog (50+ components) |
+| [docs/THEMING.md](docs/THEMING.md) | Theme system, CSS custom properties, settings API |
+
+Key conventions to know:
+
+- **Inline styles with CSS custom properties** -- use `style={{ color: 'var(--text-primary)' }}` instead of Tailwind color classes.
+- **No external charting libraries** -- all visualizations are custom SVG + Canvas.
+- **Tests colocated with source** -- `lib/foo.ts` has `lib/foo.test.ts` in the same directory.
+- **`requireEnv()` inside functions** -- never at module top level (see `lib/env.ts`).
+- **No hardcoded operator names** -- use `operatorName` from the settings context.
+
 ## Reporting Bugs
 
 Open a [GitHub Issue](https://github.com/JohnRiceML/clawport-ui/issues) with:
