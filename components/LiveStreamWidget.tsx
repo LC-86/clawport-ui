@@ -5,6 +5,7 @@ import type { LiveLogLine } from '@/lib/types'
 import { parseSSEBuffer } from '@/lib/sse'
 import { Play, Pause, Copy, Minimize2, Search, ChevronRight, GripHorizontal } from 'lucide-react'
 import { useSettings } from '@/app/settings-provider'
+import { useI18n } from '@/lib/i18n'
 
 /* ── Constants ────────────────────────────────────────────────── */
 
@@ -21,14 +22,14 @@ const LEVEL_STYLE: Record<string, { bg: string; color: string; label: string }> 
   debug: { bg: 'var(--fill-secondary)', color: 'var(--text-tertiary)', label: 'DBG' },
 }
 
-function formatTime(ts: string): string {
+function formatLogTime(ts: string, locale: 'zh-CN' | 'en'): string {
   const d = new Date(ts)
   if (isNaN(d.getTime())) return ts.slice(0, 8)
-  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
-function formatCopyLine(line: LiveLogLine): string {
-  return `[${formatTime(line.time)}] [${line.level}] ${line.message}`
+function formatCopyLine(line: LiveLogLine, locale: 'zh-CN' | 'en'): string {
+  return `[${formatLogTime(line.time, locale)}] [${line.level}] ${line.message}`
 }
 
 function prettyRaw(raw: string): string {
@@ -42,6 +43,7 @@ type WidgetState = 'collapsed' | 'expanded'
 /* ── LogRow ───────────────────────────────────────────────────── */
 
 function LogRow({ line }: { line: LiveLogLine }) {
+  const { locale } = useI18n()
   const [open, setOpen] = useState(false)
   const lvl = LEVEL_STYLE[line.level] ?? LEVEL_STYLE.debug
 
@@ -77,7 +79,7 @@ function LogRow({ line }: { line: LiveLogLine }) {
         <span className="font-mono" style={{
           color: 'var(--text-tertiary)', fontSize: 10, flexShrink: 0, minWidth: 58,
         }}>
-          {formatTime(line.time)}
+          {formatLogTime(line.time, locale)}
         </span>
         <span style={{
           fontSize: 9, fontWeight: 700, letterSpacing: '0.5px',
@@ -116,6 +118,7 @@ function LogRow({ line }: { line: LiveLogLine }) {
 /* ── Component ────────────────────────────────────────────────── */
 
 export function LiveStreamWidget() {
+  const { t, locale } = useI18n()
   const [state, setState] = useState<WidgetState>('collapsed')
   const [lines, setLines] = useState<LiveLogLine[]>([])
   const [streaming, setStreaming] = useState(false)
@@ -309,11 +312,11 @@ export function LiveStreamWidget() {
   /* ── Actions ──────────────────────────────────────────────── */
 
   const handleCopy = useCallback(async () => {
-    const text = filteredLines.map(formatCopyLine).join('\n')
+    const text = filteredLines.map((line) => formatCopyLine(line, locale)).join('\n')
     await navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
-  }, [filteredLines])
+  }, [filteredLines, locale])
 
   /* ── DOM event listener (Activity page "Open Live Logs") ──── */
 
@@ -379,7 +382,7 @@ export function LiveStreamWidget() {
             border: 'none', cursor: 'pointer', padding: 0,
           }}
         >
-          Live Logs
+          {t('liveLogs.title')}
         </button>
         {lines.length > 0 && (
           <span style={{
@@ -393,7 +396,7 @@ export function LiveStreamWidget() {
         <button
           onClick={streaming ? stopStream : startStream}
           className="focus-ring"
-          title={streaming ? 'Stop stream' : 'Start stream'}
+          title={streaming ? t('liveLogs.stop') : t('liveLogs.start')}
           style={{
             width: 28, height: 28,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -454,7 +457,7 @@ export function LiveStreamWidget() {
           fontSize: 'var(--text-footnote)', fontWeight: 'var(--weight-semibold)',
           color: 'var(--text-primary)',
         }}>
-          Live Logs
+          {t('liveLogs.title')}
         </span>
         {lines.length > 0 && (
           <span style={{ fontSize: 'var(--text-caption2)', color: 'var(--text-tertiary)' }}>
@@ -466,7 +469,7 @@ export function LiveStreamWidget() {
           <button
             onClick={handleCopy}
             className="focus-ring"
-            title={isFiltering ? 'Copy filtered logs' : 'Copy all logs'}
+            title={isFiltering ? t('liveLogs.copyFiltered') : t('liveLogs.copyAll')}
             disabled={filteredLines.length === 0}
             style={{
               width: 28, height: 28,
@@ -484,7 +487,7 @@ export function LiveStreamWidget() {
           <button
             onClick={() => setState('collapsed')}
             className="focus-ring"
-            title="Minimize"
+            title={t('liveLogs.minimize')}
             style={{
               width: 28, height: 28,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -517,7 +520,7 @@ export function LiveStreamWidget() {
           <Search size={12} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
           <input
             type="text"
-            placeholder="Search logs..."
+            placeholder={t('logs.searchPlaceholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{
@@ -554,7 +557,7 @@ export function LiveStreamWidget() {
               <button
                 key={level}
                 onClick={() => toggleLevel(level)}
-                title={`${active ? 'Hide' : 'Show'} ${level} logs`}
+                title={level}
                 style={{
                   fontSize: 9,
                   fontWeight: 700,
@@ -606,7 +609,7 @@ export function LiveStreamWidget() {
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
             </svg>
             <span style={{ fontSize: 'var(--text-caption1)', fontWeight: 'var(--weight-medium)' }}>
-              {streaming ? 'Waiting for log data...' : 'Click Play to start streaming'}
+              {streaming ? t('liveLogs.waiting') : t('liveLogs.clickPlay')}
             </span>
           </div>
         ) : filteredLines.length === 0 ? (
@@ -616,7 +619,7 @@ export function LiveStreamWidget() {
           }}>
             <Search size={20} />
             <span style={{ fontSize: 'var(--text-caption1)', fontWeight: 'var(--weight-medium)' }}>
-              No matching logs
+              {t('liveLogs.noMatch')}
             </span>
           </div>
         ) : (
@@ -648,7 +651,7 @@ export function LiveStreamWidget() {
           }}
         >
           {streaming ? <Pause size={12} /> : <Play size={12} />}
-          {streaming ? 'Pause' : 'Play'}
+          {streaming ? t('liveLogs.pause') : t('liveLogs.play')}
         </button>
 
         {!autoScroll && filteredLines.length > 0 && (
@@ -665,7 +668,7 @@ export function LiveStreamWidget() {
               color: 'var(--text-secondary)',
             }}
           >
-            Scroll to bottom
+            {t('liveLogs.scrollToBottom')}
           </button>
         )}
       </div>

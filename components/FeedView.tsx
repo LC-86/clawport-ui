@@ -3,6 +3,8 @@
 import { useState, useRef, useCallback } from "react"
 import type { Agent, CronJob } from "@/lib/types"
 import { AgentAvatar } from "@/components/AgentAvatar"
+import { describeCron } from "@/lib/cron-utils"
+import { useI18n } from "@/lib/i18n"
 
 interface FeedViewProps {
   agents: Agent[]
@@ -13,29 +15,8 @@ interface FeedViewProps {
 
 type Filter = "all" | "error" | "ok"
 
-const PILLS: { key: Filter; label: string; dotColor: string }[] = [
-  { key: "all", label: "All", dotColor: "var(--text-primary)" },
-  { key: "ok", label: "Healthy", dotColor: "var(--system-green)" },
-  { key: "error", label: "Errors", dotColor: "var(--system-red)" },
-]
-
-function relativeTime(dateStr: string): string {
-  const now = Date.now()
-  const then = new Date(dateStr).getTime()
-  if (isNaN(then)) return dateStr
-  const diffMs = now - then
-  const mins = Math.floor(diffMs / 60000)
-  if (mins < 1) return "Just now"
-  if (mins < 60) return `${mins}m ago`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  if (days === 1) return "Yesterday"
-  if (days < 7) return `${days}d ago`
-  return new Date(dateStr).toLocaleDateString()
-}
-
 function StatusBadge({ status }: { status: CronJob["status"] }) {
+  const { t } = useI18n()
   const bg =
     status === "ok"
       ? "color-mix(in srgb, var(--system-green) 15%, transparent)"
@@ -48,7 +29,7 @@ function StatusBadge({ status }: { status: CronJob["status"] }) {
       : status === "error"
         ? "var(--system-red)"
         : "var(--text-tertiary)"
-  const label = status === "ok" ? "healthy" : status
+  const label = status === "ok" ? t('home.legend.healthy') : status === 'error' ? t('activity.errors') : t('crons.filter.idle')
 
   return (
     <span
@@ -132,8 +113,14 @@ function StatCard({
 }
 
 export function FeedView({ agents, crons, selectedId, onSelect }: FeedViewProps) {
+  const { locale, t, formatRelativeTime } = useI18n()
   const [filter, setFilter] = useState<Filter>("all")
   const pillsRef = useRef<HTMLDivElement>(null)
+  const pills: { key: Filter; label: string; dotColor: string }[] = [
+    { key: "all", label: t('logs.all'), dotColor: "var(--text-primary)" },
+    { key: "ok", label: t('home.legend.healthy'), dotColor: "var(--system-green)" },
+    { key: "error", label: t('activity.errors'), dotColor: "var(--system-red)" },
+  ]
 
   const agentMap = new Map(agents.map((a) => [a.id, a]))
 
@@ -191,7 +178,7 @@ export function FeedView({ agents, crons, selectedId, onSelect }: FeedViewProps)
       >
         <StatCard
           value={counts.all}
-          label="Total crons"
+          label={t('nav.crons')}
           color="var(--text-primary)"
           icon={
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
@@ -202,7 +189,7 @@ export function FeedView({ agents, crons, selectedId, onSelect }: FeedViewProps)
         />
         <StatCard
           value={counts.ok}
-          label="Healthy"
+          label={t('home.legend.healthy')}
           color="var(--system-green)"
           icon={
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
@@ -213,7 +200,7 @@ export function FeedView({ agents, crons, selectedId, onSelect }: FeedViewProps)
         />
         <StatCard
           value={counts.error}
-          label="Errors"
+          label={t('activity.errors')}
           color={counts.error > 0 ? "var(--system-red)" : "var(--text-tertiary)"}
           icon={
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
@@ -225,7 +212,7 @@ export function FeedView({ agents, crons, selectedId, onSelect }: FeedViewProps)
         />
         <StatCard
           value={idleCount}
-          label="Idle"
+          label={t('crons.filter.idle')}
           color="var(--text-tertiary)"
           icon={
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
@@ -247,7 +234,7 @@ export function FeedView({ agents, crons, selectedId, onSelect }: FeedViewProps)
           marginBottom: "var(--space-4)",
         }}
       >
-        {PILLS.map((pill) => {
+        {pills.map((pill) => {
           const isActive = filter === pill.key
           return (
             <button
@@ -429,7 +416,7 @@ export function FeedView({ agents, crons, selectedId, onSelect }: FeedViewProps)
                         color: "var(--text-tertiary)",
                       }}
                     >
-                      {cron.scheduleDescription}
+                      {describeCron(cron.schedule, locale)}
                     </span>
                     {cron.lastRun && (
                       <>
@@ -440,7 +427,7 @@ export function FeedView({ agents, crons, selectedId, onSelect }: FeedViewProps)
                             color: "var(--text-quaternary)",
                           }}
                         >
-                          {relativeTime(cron.lastRun)}
+                          {formatRelativeTime(cron.lastRun)}
                         </span>
                       </>
                     )}

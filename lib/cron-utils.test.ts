@@ -282,6 +282,11 @@ describe('timeAgo', () => {
     expect(timeAgo(d)).toBe('in 3d')
   })
 
+  it('returns Chinese relative text when locale is zh-CN', () => {
+    const d = new Date(NOW - 5 * 60000).toISOString()
+    expect(timeAgo(d, 'zh-CN')).toBe('5 分钟前')
+  })
+
   it('handles exactly 1 minute ago', () => {
     const d = new Date(NOW - 60000).toISOString()
     expect(timeAgo(d)).toBe('1m ago')
@@ -343,5 +348,20 @@ describe('nextRunLabel', () => {
     const d = new Date(NOW).toISOString()
     // diff = 0, which is not < 0, so not "overdue". mins=0, 0 < 60 → "in 0m"
     expect(nextRunLabel(d)).toBe('in 0m')
+  })
+
+  it('returns Chinese next-run text when locale is zh-CN', () => {
+    const d = new Date(NOW + 25 * 60000).toISOString()
+    expect(nextRunLabel(d, 'zh-CN')).toBe('25 分钟后')
+  })
+})
+
+describe('describeCron locale', () => {
+  it('returns Chinese daily description', () => {
+    expect(describeCron('0 8 * * *', 'zh-CN')).toBe('每天 8:00')
+  })
+
+  it('returns Chinese weekday description', () => {
+    expect(describeCron('0 10 * * 1-5', 'zh-CN')).toBe('工作日 10:00')
   })
 })

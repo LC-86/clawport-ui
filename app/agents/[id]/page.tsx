@@ -6,6 +6,7 @@ import { Upload, X } from "lucide-react"
 import type { Agent, CronJob } from "@/lib/types"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ErrorState } from "@/components/ErrorState"
+import { useI18n, usePageTitle } from "@/lib/i18n"
 import { AgentAvatar } from "@/components/AgentAvatar"
 import { useSettings } from "@/app/settings-provider"
 
@@ -258,12 +259,14 @@ export default function AgentDetailPage({
   const { id } = use(params)
   const router = useRouter()
   const { settings, setAgentOverride, clearAgentOverride } = useSettings()
+  const { t } = useI18n()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [agent, setAgent] = useState<Agent | null>(null)
   const [allAgents, setAllAgents] = useState<Agent[]>([])
   const [crons, setCrons] = useState<CronJob[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  usePageTitle(agent?.name ?? t('agent.notFound'))
 
   const loadData = useCallback(() => {
     setLoading(true)
@@ -315,7 +318,7 @@ export default function AgentDetailPage({
             color: "var(--text-secondary)",
           }}
         >
-          Agent not found
+          {t('agent.notFound')}
         </div>
         <Link
           href="/"
@@ -325,7 +328,7 @@ export default function AgentDetailPage({
             fontSize: "var(--text-body)",
           }}
         >
-          &larr; Back to Map
+          &larr; {t('common.backToMap')}
         </Link>
       </div>
     )
@@ -367,12 +370,12 @@ export default function AgentDetailPage({
               textDecoration: "none",
             }}
           >
-            &larr; Back to Map
+            &larr; {t('common.backToMap')}
           </Link>
           <button
             onClick={() => router.push(`/chat/${agent.id}`)}
             className="focus-ring"
-            aria-label={`Open chat with ${agent.name}`}
+            aria-label={`${t('common.openChat')} ${agent.name}`}
             style={{
               background: "var(--accent)",
               color: "var(--accent-contrast)",
@@ -385,7 +388,7 @@ export default function AgentDetailPage({
               transition: "all 150ms var(--ease-spring)",
             }}
           >
-            Open Chat &rarr;
+            {t('common.openChat')} &rarr;
           </button>
         </div>
       </div>
@@ -416,7 +419,7 @@ export default function AgentDetailPage({
             >
               <button
                 onClick={() => fileInputRef.current?.click()}
-                title="Upload profile image"
+                title={t('agent.photo')}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -432,12 +435,12 @@ export default function AgentDetailPage({
                 }}
               >
                 <Upload size={10} />
-                Photo
+                {t('agent.photo')}
               </button>
               {settings.agentOverrides[agent.id]?.profileImage && (
                 <button
                   onClick={() => setAgentOverride(agent.id, { profileImage: undefined })}
-                  title="Remove photo"
+                  title={t('settings.removeImage')}
                   style={{
                     width: 18,
                     height: 18,
@@ -523,7 +526,7 @@ export default function AgentDetailPage({
         {/* ── About card ── */}
         <Card>
           <div className="section-header" style={{ marginBottom: "var(--space-3)" }}>
-            About
+            {t('agent.about')}
           </div>
           <p
             style={{
@@ -542,7 +545,7 @@ export default function AgentDetailPage({
           {/* Tools card */}
           <Card>
             <div className="section-header" style={{ marginBottom: "var(--space-3)" }}>
-              Tools
+              {t('agent.tools')}
             </div>
             <div className="flex flex-wrap gap-2">
               {agent.tools.map((t) => (
@@ -574,7 +577,7 @@ export default function AgentDetailPage({
           {/* Hierarchy card */}
           <Card>
             <div className="section-header" style={{ marginBottom: "var(--space-3)" }}>
-              Hierarchy
+              {t('agent.hierarchy')}
             </div>
             {parent && (
               <div style={{ marginBottom: "var(--space-3)" }}>
@@ -585,7 +588,7 @@ export default function AgentDetailPage({
                     marginBottom: 2,
                   }}
                 >
-                  Reports to
+                  {t('agent.reportsTo')}
                 </div>
                 <Link
                   href={`/agents/${parent.id}`}
@@ -615,7 +618,7 @@ export default function AgentDetailPage({
                     marginBottom: 2,
                   }}
                 >
-                  Direct reports ({children.length})
+                  {t('agent.directReports', { count: children.length })}
                 </div>
                 <div
                   style={{
@@ -655,7 +658,7 @@ export default function AgentDetailPage({
                   color: "var(--text-tertiary)",
                 }}
               >
-                No hierarchy connections
+                {t('agent.noHierarchy')}
               </div>
             )}
           </Card>
@@ -682,7 +685,7 @@ export default function AgentDetailPage({
               justifyContent: "space-between",
             }}
           >
-            <span>Crons {crons.length > 0 && `(${crons.length})`}</span>
+            <span>{t('agent.crons')} {crons.length > 0 && `(${crons.length})`}</span>
           </div>
           {crons.length === 0 ? (
             <div
@@ -691,7 +694,7 @@ export default function AgentDetailPage({
                 color: "var(--text-tertiary)",
               }}
             >
-              No crons associated with this agent
+              {t('agent.noCrons')}
             </div>
           ) : (
             <div
@@ -779,7 +782,7 @@ export default function AgentDetailPage({
                   fontWeight: "var(--weight-medium)",
                 }}
               >
-                View all crons &rarr;
+                {t('agent.viewAllCrons')} &rarr;
               </Link>
             </div>
           )}
@@ -788,7 +791,7 @@ export default function AgentDetailPage({
         {/* ── Voice card ── */}
         <Card>
           <div className="section-header" style={{ marginBottom: "var(--space-3)" }}>
-            Voice
+            {t('agent.voice')}
           </div>
           {agent.voiceId ? (
             <div
@@ -826,7 +829,7 @@ export default function AgentDetailPage({
               >
                 {agent.voiceId}
               </span>
-              <CopyButton text={agent.voiceId} label="Copy voice ID" />
+              <CopyButton text={agent.voiceId} label={t('agent.copyVoiceId')} />
             </div>
           ) : (
             <div
@@ -835,7 +838,7 @@ export default function AgentDetailPage({
                 color: "var(--text-tertiary)",
               }}
             >
-              No voice configured
+              {t('agent.noVoice')}
             </div>
           )}
         </Card>

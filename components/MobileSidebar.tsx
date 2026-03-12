@@ -8,6 +8,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { SearchTrigger } from '@/components/GlobalSearch';
 import { useSettings } from '@/app/settings-provider';
 import { SidebarUsageWidget } from '@/components/sidebar/SidebarUsageWidget';
+import { useI18n } from '@/lib/i18n';
 
 export function MobileSidebar({
   onOpenSearch,
@@ -17,6 +18,7 @@ export function MobileSidebar({
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const { settings } = useSettings();
+  const { t } = useI18n();
 
   // Close sidebar on route change
   useEffect(() => {
@@ -76,7 +78,7 @@ export function MobileSidebar({
         <button
           onClick={toggle}
           className="btn-ghost focus-ring"
-          aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
+          aria-label={open ? t('common.close') : t('nav.workspace')}
           aria-expanded={open}
           style={{
             width: '36px',
@@ -132,7 +134,7 @@ export function MobileSidebar({
             {(!settings.portalName || settings.portalName === 'ClawPort')
               ? <>Claw<span style={{ color: 'var(--accent)' }}>Port</span></>
               : settings.portalName}
-            {' '}{settings.portalSubtitle ?? 'Command Centre'}
+            {' '}{settings.portalSubtitle ?? t('app.commandCentre')}
           </span>
         </div>
       </header>
@@ -223,7 +225,7 @@ export function MobileSidebar({
                   letterSpacing: '0.01em',
                 }}
               >
-                {settings.portalSubtitle ?? 'Command Centre'}
+                {settings.portalSubtitle ?? t('app.commandCentre')}
               </div>
             </div>
           </div>

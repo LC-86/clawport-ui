@@ -7,6 +7,7 @@ import { MobileSidebar } from '@/components/MobileSidebar';
 import { SidebarUsageWidget } from '@/components/sidebar/SidebarUsageWidget';
 import { GlobalSearch, SearchTrigger } from '@/components/GlobalSearch';
 import { useSettings } from '@/app/settings-provider';
+import { useI18n } from '@/lib/i18n';
 
 /**
  * Sidebar -- client wrapper that coordinates desktop sidebar, mobile sidebar,
@@ -14,6 +15,7 @@ import { useSettings } from '@/app/settings-provider';
  */
 export function Sidebar() {
   const { settings } = useSettings();
+  const { t } = useI18n();
   const openSearch = useCallback(() => {
     // We trigger the search modal by simulating Cmd+K.
     // Instead, we expose a controlled open state via a custom event.
@@ -83,7 +85,7 @@ export function Sidebar() {
                   letterSpacing: '0.01em',
                 }}
               >
-                {settings.portalSubtitle ?? 'Command Centre'}
+                {settings.portalSubtitle ?? t('app.commandCentre')}
               </div>
             </div>
           </div>

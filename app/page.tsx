@@ -10,6 +10,7 @@ import { ErrorState } from "@/components/ErrorState"
 import { AgentAvatar } from "@/components/AgentAvatar"
 import { GridView } from "@/components/GridView"
 import { FeedView } from "@/components/FeedView"
+import { useI18n, usePageTitle } from "@/lib/i18n"
 
 const OrgMap = dynamic(
   () => import("@/components/OrgMap").then((m) => ({ default: m.OrgMap })),
@@ -106,16 +107,12 @@ const VIEW_ICONS: Record<View, React.ComponentType<{ size: number }>> = {
   feed: List,
 }
 
-const VIEW_OPTIONS: { key: View; label: string }[] = [
-  { key: "map", label: "Map" },
-  { key: "grid", label: "Grid" },
-  { key: "feed", label: "Feed" },
-]
-
 /* ──────────────────────────────────────────────
    Main page
    ────────────────────────────────────────────── */
 export default function HomePage() {
+  const { t } = useI18n()
+  usePageTitle(t('titles.home'))
   const router = useRouter()
   const [agents, setAgents] = useState<Agent[]>([])
   const [crons, setCrons] = useState<CronJob[]>([])
@@ -124,6 +121,11 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<View>("map")
   const closeRef = useRef<HTMLButtonElement>(null)
+  const viewOptions: { key: View; label: string }[] = [
+    { key: "map", label: t('home.view.map') },
+    { key: "grid", label: t('home.view.grid') },
+    { key: "feed", label: t('home.view.feed') },
+  ]
 
   const loadData = useCallback(() => {
     setLoading(true)
@@ -232,7 +234,7 @@ export default function HomePage() {
             border: "1px solid var(--separator)",
           }}
         >
-          {VIEW_OPTIONS.map((opt) => {
+          {viewOptions.map((opt) => {
             const isActive = view === opt.key
             const ViewIcon = VIEW_ICONS[opt.key]
             return (
@@ -304,7 +306,7 @@ export default function HomePage() {
                   display: "inline-block",
                 }}
               />
-              Healthy
+              {t('home.legend.healthy')}
             </span>
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <span
@@ -316,7 +318,7 @@ export default function HomePage() {
                   display: "inline-block",
                 }}
               />
-              Errors
+              {t('activity.errors')}
             </span>
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <span
@@ -328,7 +330,7 @@ export default function HomePage() {
                   display: "inline-block",
                 }}
               />
-              No crons
+              {t('home.legend.noCrons')}
             </span>
           </div>
         )}
@@ -383,7 +385,7 @@ export default function HomePage() {
                 ref={closeRef}
                 onClick={() => setSelected(null)}
                 className="focus-ring"
-                aria-label="Close detail panel"
+                aria-label={t('common.close')}
                 style={{
                   width: 30,
                   height: 30,
@@ -476,7 +478,7 @@ export default function HomePage() {
                 <button
                   onClick={() => router.push(`/chat/${selected.id}`)}
                   className="focus-ring btn-scale"
-                  aria-label={`Open chat with ${selected.name}`}
+                  aria-label={`${t('home.detail.message')} ${selected.name}`}
                   style={{
                     flex: 1,
                     display: "flex",
@@ -495,12 +497,12 @@ export default function HomePage() {
                   }}
                 >
                   <MessageSquare size={16} />
-                  Message
+                  {t('home.detail.message')}
                 </button>
                 <Link
                   href={`/agents/${selected.id}`}
                   className="focus-ring btn-scale"
-                  aria-label={`View full profile of ${selected.name}`}
+                  aria-label={`${t('home.detail.profile')} ${selected.name}`}
                   style={{
                     flex: 1,
                     display: "flex",
@@ -520,7 +522,7 @@ export default function HomePage() {
                   }}
                 >
                   <User size={16} />
-                  Profile
+                  {t('home.detail.profile')}
                 </Link>
               </div>
             </div>
@@ -546,7 +548,7 @@ export default function HomePage() {
                     padding: "0 var(--space-4) var(--space-2)",
                   }}
                 >
-                  Capabilities
+                  {t('home.detail.capabilities')}
                 </div>
                 <div
                   style={{
@@ -609,7 +611,7 @@ export default function HomePage() {
                       padding: "0 var(--space-4) var(--space-2)",
                     }}
                   >
-                    Organization
+                    {t('home.detail.organization')}
                   </div>
                   <div
                     style={{
@@ -656,7 +658,7 @@ export default function HomePage() {
                               color: "var(--text-tertiary)",
                             }}
                           >
-                            Reports to
+                            {t('home.detail.reportsTo')}
                           </div>
                         </div>
                         <span
@@ -709,7 +711,7 @@ export default function HomePage() {
                               color: "var(--text-tertiary)",
                             }}
                           >
-                            Direct report
+                            {t('home.detail.directReport')}
                           </div>
                         </div>
                         <span
@@ -740,7 +742,7 @@ export default function HomePage() {
                       padding: "0 var(--space-4) var(--space-2)",
                     }}
                   >
-                    Scheduled Tasks
+                    {t('home.detail.scheduledTasks')}
                   </div>
                   <div
                     style={{

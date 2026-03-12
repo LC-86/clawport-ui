@@ -4,6 +4,7 @@ import type { Agent } from '@/lib/types'
 import type { ConversationStore } from '@/lib/conversations'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AgentAvatar } from '@/components/AgentAvatar'
+import { useI18n, type Locale } from '@/lib/i18n'
 
 interface AgentListProps {
   agents: Agent[]
@@ -14,6 +15,7 @@ interface AgentListProps {
 }
 
 export function AgentList({ agents, conversations, activeId, onSelect, loading }: AgentListProps) {
+  const { locale, t, formatDate, formatTime } = useI18n()
   const [search, setSearch] = useState('')
 
   const filtered = search.trim()
@@ -61,7 +63,7 @@ export function AgentList({ agents, conversations, activeId, onSelect, loading }
           color: 'var(--text-primary)',
           margin: 0,
         }}>
-          Messages
+          {t('chat.list.title')}
         </h2>
 
         {/* Search */}
@@ -87,8 +89,8 @@ export function AgentList({ agents, conversations, activeId, onSelect, loading }
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search agents..."
-            aria-label="Search agents"
+            placeholder={t('chat.list.searchPlaceholder')}
+            aria-label={t('chat.list.searchPlaceholder')}
             className="focus-ring"
             style={{
               flex: 1,
@@ -126,9 +128,9 @@ export function AgentList({ agents, conversations, activeId, onSelect, loading }
       </div>
 
       {/* Agent list */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-1) 0' }} role="listbox" aria-label="Agent list">
+      <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-1) 0' }} role="listbox" aria-label={t('chat.list.agentList')}>
         {loading ? (
-          <div style={{ padding: 'var(--space-1) 0' }} role="status" aria-label="Loading agents">
+          <div style={{ padding: 'var(--space-1) 0' }} role="status" aria-label={t('chat.list.loadingAgents')}>
             {[1, 2, 3, 4].map((i) => (
               <div key={i} style={{
                 display: 'flex',
@@ -158,7 +160,7 @@ export function AgentList({ agents, conversations, activeId, onSelect, loading }
               color: 'var(--text-tertiary)',
               lineHeight: 'var(--leading-relaxed)',
             }}>
-              No agents match &lsquo;{search.trim()}&rsquo;
+              {t('chat.list.noMatch', { query: search.trim() })}
             </div>
           </div>
         ) : (
@@ -169,12 +171,12 @@ export function AgentList({ agents, conversations, activeId, onSelect, loading }
             const isActive = agent.id === activeId
 
             const preview = lastMsg
-              ? (lastMsg.role === 'user' ? 'You: ' : '') +
+              ? (lastMsg.role === 'user' ? t('chat.list.youPrefix') : '') +
                 lastMsg.content.replace(/[#*`]/g, '').slice(0, 50) +
                 (lastMsg.content.length > 50 ? '\u2026' : '')
-              : agent.description?.slice(0, 50) || 'Start a conversation'
+              : agent.description?.slice(0, 50) || t('chat.list.startConversation')
 
-            const timeLabel = lastMsg ? formatTime(lastMsg.timestamp) : ''
+            const timeLabel = lastMsg ? formatMessageTime(lastMsg.timestamp, locale, formatDate, formatTime) : ''
 
             return (
               <button
@@ -290,6 +292,7 @@ export function AgentListMobile({
   onSelect,
   loading,
 }: Omit<AgentListProps, 'activeId'>) {
+  const { locale, t, formatDate, formatTime } = useI18n()
   const [search, setSearch] = useState('')
 
   const filtered = search.trim()
@@ -331,7 +334,7 @@ export function AgentListMobile({
           color: 'var(--text-primary)',
           margin: 0,
         }}>
-          Messages
+          {t('chat.list.title')}
         </h2>
 
         {/* Search */}
@@ -357,8 +360,8 @@ export function AgentListMobile({
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search agents..."
-            aria-label="Search agents"
+            placeholder={t('chat.list.searchPlaceholder')}
+            aria-label={t('chat.list.searchPlaceholder')}
             className="focus-ring"
             style={{
               flex: 1,
@@ -376,9 +379,9 @@ export function AgentListMobile({
       </div>
 
       {/* Agent list */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-1) 0' }} role="listbox" aria-label="Agent list">
+      <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-1) 0' }} role="listbox" aria-label={t('chat.list.agentList')}>
         {loading ? (
-          <div style={{ padding: 'var(--space-1) 0' }} role="status" aria-label="Loading agents">
+          <div style={{ padding: 'var(--space-1) 0' }} role="status" aria-label={t('chat.list.loadingAgents')}>
             {[1, 2, 3, 4].map((i) => (
               <div key={i} style={{
                 display: 'flex',
@@ -408,7 +411,7 @@ export function AgentListMobile({
               color: 'var(--text-tertiary)',
               lineHeight: 'var(--leading-relaxed)',
             }}>
-              No agents match &lsquo;{search.trim()}&rsquo;
+              {t('chat.list.noMatch', { query: search.trim() })}
             </div>
           </div>
         ) : (
@@ -418,12 +421,12 @@ export function AgentListMobile({
             const unread = conv?.unread || 0
 
             const preview = lastMsg
-              ? (lastMsg.role === 'user' ? 'You: ' : '') +
+              ? (lastMsg.role === 'user' ? t('chat.list.youPrefix') : '') +
                 lastMsg.content.replace(/[#*`]/g, '').slice(0, 60) +
                 (lastMsg.content.length > 60 ? '\u2026' : '')
-              : agent.description?.slice(0, 60) || 'Start a conversation'
+              : agent.description?.slice(0, 60) || t('chat.list.startConversation')
 
-            const timeLabel = lastMsg ? formatTime(lastMsg.timestamp) : ''
+            const timeLabel = lastMsg ? formatMessageTime(lastMsg.timestamp, locale, formatDate, formatTime) : ''
 
             return (
               <button
@@ -527,11 +530,16 @@ export function AgentListMobile({
   )
 }
 
-function formatTime(ts: number): string {
+function formatMessageTime(
+  ts: number,
+  locale: Locale,
+  formatDate: (value: string | number | Date, options?: Intl.DateTimeFormatOptions) => string,
+  formatTime: (value: string | number | Date, options?: Intl.DateTimeFormatOptions) => string,
+): string {
   const now = Date.now()
   const diff = now - ts
-  if (diff < 60000) return 'now'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m`
-  if (diff < 86400000) return new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-  return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  if (diff < 60000) return locale === 'zh-CN' ? '现在' : 'now'
+  if (diff < 3600000) return locale === 'zh-CN' ? `${Math.floor(diff / 60000)}分` : `${Math.floor(diff / 60000)}m`
+  if (diff < 86400000) return formatTime(ts, { hour: 'numeric', minute: '2-digit' })
+  return formatDate(ts, { month: 'short', day: 'numeric' })
 }

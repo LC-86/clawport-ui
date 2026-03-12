@@ -7,10 +7,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { RefreshCw, Radio } from 'lucide-react'
 import { ErrorState } from '@/components/ErrorState'
 import { LogBrowser } from '@/components/activity/LogBrowser'
+import { useI18n, usePageTitle } from '@/lib/i18n'
 
 /* ── Summary Cards ─────────────────────────────────────────────── */
 
 function TotalCard({ count }: { count: number }) {
+  const { t } = useI18n()
   return (
     <div style={{
       background: 'var(--material-regular)',
@@ -19,7 +21,7 @@ function TotalCard({ count }: { count: number }) {
       padding: 'var(--space-4)',
     }}>
       <div style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)', fontWeight: 'var(--weight-medium)', marginBottom: 'var(--space-1)' }}>
-        Total Events
+        {t('activity.totalEvents')}
       </div>
       <div style={{ fontSize: 'var(--text-title2)', color: 'var(--text-primary)', fontWeight: 'var(--weight-bold)' }}>
         {count}
@@ -29,6 +31,7 @@ function TotalCard({ count }: { count: number }) {
 }
 
 function ErrorCard({ count }: { count: number }) {
+  const { t } = useI18n()
   const hasErrors = count > 0
   return (
     <div style={{
@@ -38,7 +41,7 @@ function ErrorCard({ count }: { count: number }) {
       padding: 'var(--space-4)',
     }}>
       <div style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)', fontWeight: 'var(--weight-medium)', marginBottom: 'var(--space-1)' }}>
-        Errors
+        {t('activity.errors')}
       </div>
       <div className="flex items-center" style={{ gap: 'var(--space-2)' }}>
         {hasErrors && (
@@ -57,6 +60,7 @@ function ErrorCard({ count }: { count: number }) {
 }
 
 function SourcesCard({ cron, config }: { cron: number; config: number }) {
+  const { t } = useI18n()
   return (
     <div style={{
       background: 'var(--material-regular)',
@@ -65,16 +69,16 @@ function SourcesCard({ cron, config }: { cron: number; config: number }) {
       padding: 'var(--space-4)',
     }}>
       <div style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)', fontWeight: 'var(--weight-medium)', marginBottom: 'var(--space-1)' }}>
-        Sources
+        {t('activity.sources')}
       </div>
       <div className="flex items-center" style={{ gap: 'var(--space-3)' }}>
         <div>
           <span style={{ fontSize: 'var(--text-footnote)', fontWeight: 'var(--weight-semibold)', color: 'var(--system-blue)' }}>{cron}</span>
-          <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)', marginLeft: 4 }}>cron</span>
+          <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)', marginLeft: 4 }}>{t('activity.cron')}</span>
         </div>
         <div>
           <span style={{ fontSize: 'var(--text-footnote)', fontWeight: 'var(--weight-semibold)', color: 'var(--system-purple)' }}>{config}</span>
-          <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)', marginLeft: 4 }}>config</span>
+          <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)', marginLeft: 4 }}>{t('activity.config')}</span>
         </div>
       </div>
     </div>
@@ -84,6 +88,8 @@ function SourcesCard({ cron, config }: { cron: number; config: number }) {
 /* ── Page ──────────────────────────────────────────────────────── */
 
 export default function ActivityPage() {
+  const { locale, t } = useI18n()
+  usePageTitle(t('titles.activity'))
   const [entries, setEntries] = useState<LogEntry[]>([])
   const [summary, setSummary] = useState<LogSummary | null>(null)
   const [filter, setFilter] = useState<LogFilter>('all')
@@ -91,7 +97,7 @@ export default function ActivityPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [updatedAgo, setUpdatedAgo] = useState('just now')
+  const [updatedAgo, setUpdatedAgo] = useState(locale === 'zh-CN' ? '刚刚' : 'just now')
 
   const refresh = useCallback(() => {
     setRefreshing(true)
@@ -124,11 +130,11 @@ export default function ActivityPage() {
 
   // Updated ago ticker
   useEffect(() => {
-    const tick = () => setUpdatedAgo(timeAgo(lastRefresh.toISOString()))
+    const tick = () => setUpdatedAgo(timeAgo(lastRefresh.toISOString(), locale))
     tick()
     const interval = setInterval(tick, 30000)
     return () => clearInterval(interval)
-  }, [lastRefresh])
+  }, [lastRefresh, locale])
 
   if (error && entries.length === 0) {
     return <ErrorState message={error} onRetry={refresh} />
@@ -155,7 +161,7 @@ export default function ActivityPage() {
               letterSpacing: '-0.5px',
               lineHeight: 'var(--leading-tight)',
             }}>
-              Activity Console
+              {t('activity.title')}
             </h1>
             {!loading && summary && (
               <p style={{ fontSize: 'var(--text-footnote)', color: 'var(--text-secondary)', marginTop: 'var(--space-1)' }}>
@@ -187,16 +193,16 @@ export default function ActivityPage() {
               }}
             >
               <Radio size={14} />
-              Open Live Logs
+              {t('activity.openLiveLogs')}
             </button>
 
             <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)' }}>
-              Updated {updatedAgo}
+              {t('activity.updated', { ago: updatedAgo })}
             </span>
             <button
               onClick={refresh}
               className="focus-ring"
-              aria-label="Refresh activity data"
+              aria-label={t('common.refresh')}
               style={{
                 width: 32,
                 height: 32,

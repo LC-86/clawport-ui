@@ -9,8 +9,11 @@ import {
   markRead, type ConversationStore, type Message,
   fetchConversation, syncToServer, fromStoredMessage,
 } from '@/lib/conversations'
+import { useI18n, usePageTitle } from '@/lib/i18n'
 
 function MessengerApp() {
+  const { t } = useI18n()
+  usePageTitle(t('titles.messages'))
   const router = useRouter()
   const searchParams = useSearchParams()
   const [agents, setAgents] = useState<Agent[]>([])
@@ -208,6 +211,8 @@ function MessengerApp() {
 }
 
 function EmptyState() {
+  const { t } = useI18n()
+
   return (
     <div style={{
       flex: 1,
@@ -230,7 +235,7 @@ function EmptyState() {
         color: 'var(--text-primary)',
         letterSpacing: '-0.3px',
       }}>
-        ClawPort Messages
+        {t('chat.emptyTitle')}
       </div>
       <div style={{
         fontSize: 'var(--text-subheadline)',
@@ -238,14 +243,14 @@ function EmptyState() {
         textAlign: 'center',
         lineHeight: 'var(--leading-relaxed)',
       }}>
-        Select an agent from the sidebar to start chatting
+        {t('chat.emptySubtitle')}
       </div>
       <div style={{
         fontSize: 'var(--text-caption1)',
         color: 'var(--text-quaternary)',
         marginTop: 'var(--space-2)',
       }}>
-        Press Cmd+K to search agents
+        {t('chat.emptySearchHint')}
       </div>
     </div>
   )

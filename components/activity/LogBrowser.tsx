@@ -3,13 +3,16 @@
 import { useState } from 'react'
 import type { LogEntry, LogFilter, LogSummary } from '@/lib/types'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useI18n } from '@/lib/i18n'
 
 /* ── Helpers ───────────────────────────────────────────────────── */
 
-function formatTs(ts: number): string {
+function formatTs(
+  ts: number,
+  formatDateTime: (value: string | number | Date, options?: Intl.DateTimeFormatOptions) => string,
+): string {
   if (!ts) return '--'
-  const d = new Date(ts)
-  return d.toLocaleString(undefined, {
+  return formatDateTime(ts, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -31,17 +34,10 @@ const LEVEL_DOT: Record<string, string> = {
   error: 'var(--system-red)',
 }
 
-const SOURCE_BADGE: Record<string, { bg: string; color: string; label: string }> = {
-  cron: { bg: 'rgba(0,122,255,0.1)', color: 'var(--system-blue)', label: 'CRON' },
-  config: { bg: 'rgba(175,82,222,0.1)', color: 'var(--system-purple)', label: 'CONFIG' },
+const SOURCE_BADGE: Record<string, { bg: string; color: string }> = {
+  cron: { bg: 'rgba(0,122,255,0.1)', color: 'var(--system-blue)' },
+  config: { bg: 'rgba(175,82,222,0.1)', color: 'var(--system-purple)' },
 }
-
-const PILLS: { key: LogFilter; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'error', label: 'Errors' },
-  { key: 'cron', label: 'Cron' },
-  { key: 'config', label: 'Config' },
-]
 
 /* ── Component ─────────────────────────────────────────────────── */
 
@@ -54,14 +50,22 @@ interface LogBrowserProps {
 }
 
 export function LogBrowser({ entries, summary, loading, filter, onFilterChange }: LogBrowserProps) {
+  const { t, formatDateTime } = useI18n()
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
+
+  const pills: { key: LogFilter; label: string }[] = [
+    { key: 'all', label: t('logs.all') },
+    { key: 'error', label: t('logs.errors') },
+    { key: 'cron', label: t('logs.cron') },
+    { key: 'config', label: t('logs.config') },
+  ]
 
   if (loading) {
     return (
       <div>
         <div className="flex items-center" style={{ gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
-          {PILLS.map(p => <Skeleton key={p.key} style={{ width: 64, height: 32, borderRadius: 20 }} />)}
+          {pills.map(p => <Skeleton key={p.key} style={{ width: 64, height: 32, borderRadius: 20 }} />)}
         </div>
         <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', background: 'var(--material-regular)' }}>
           {[1, 2, 3, 4, 5].map(i => (
@@ -97,7 +101,7 @@ export function LogBrowser({ entries, summary, loading, filter, onFilterChange }
     <div>
       {/* Filter pills */}
       <div className="flex items-center flex-wrap" style={{ gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
-        {PILLS.map(pill => {
+        {pills.map(pill => {
           const isActive = filter === pill.key
           return (
             <button
@@ -129,7 +133,7 @@ export function LogBrowser({ entries, summary, loading, filter, onFilterChange }
         {/* Search input */}
         <input
           type="text"
-          placeholder="Search logs..."
+          placeholder={t('logs.searchPlaceholder')}
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="focus-ring"
@@ -152,10 +156,10 @@ export function LogBrowser({ entries, summary, loading, filter, onFilterChange }
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center" style={{ height: 200, color: 'var(--text-secondary)', gap: 'var(--space-2)' }}>
           <span style={{ fontSize: 'var(--text-subheadline)', fontWeight: 'var(--weight-medium)' }}>
-            {entries.length === 0 ? 'No log entries found' : 'No entries match this filter'}
+            {entries.length === 0 ? t('logs.noEntries') : t('logs.noMatch')}
           </span>
           <span style={{ fontSize: 'var(--text-footnote)', color: 'var(--text-tertiary)' }}>
-            {entries.length === 0 ? 'Log entries from cron runs and config changes will appear here' : 'Try adjusting your filter or search'}
+            {entries.length === 0 ? t('logs.emptyHint') : t('logs.adjustHint')}
           </span>
         </div>
       ) : (
@@ -189,7 +193,7 @@ export function LogBrowser({ entries, summary, loading, filter, onFilterChange }
 
                   {/* Timestamp */}
                   <span className="flex-shrink-0 font-mono" style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)', marginLeft: 'var(--space-3)', minWidth: 130 }}>
-                    {formatTs(entry.ts)}
+                    {formatTs(entry.ts, formatDateTime)}
                   </span>
 
                   {/* Source badge */}
@@ -204,7 +208,7 @@ export function LogBrowser({ entries, summary, loading, filter, onFilterChange }
                       marginLeft: 'var(--space-2)',
                       letterSpacing: '0.04em',
                     }}>
-                      {badge.label}
+                      {entry.source === 'cron' ? t('logs.cron').toUpperCase() : t('logs.config').toUpperCase()}
                     </span>
                   )}
 
@@ -235,10 +239,10 @@ export function LogBrowser({ entries, summary, loading, filter, onFilterChange }
                 {isExpanded && (
                   <div className="animate-slide-down" style={{ padding: '0 var(--space-4) var(--space-4) var(--space-4)' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'var(--space-1) var(--space-4)', marginTop: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
-                      <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)' }}>Source</span>
+                      <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)' }}>{t('logs.source')}</span>
                       <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>{entry.source}</span>
 
-                      <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)' }}>Level</span>
+                      <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)' }}>{t('logs.level')}</span>
                       <span style={{
                         fontSize: 'var(--text-caption1)',
                         color: entry.level === 'error' ? 'var(--system-red)' : entry.level === 'warn' ? 'var(--system-orange)' : 'var(--text-secondary)',
@@ -246,24 +250,24 @@ export function LogBrowser({ entries, summary, loading, filter, onFilterChange }
                         textTransform: 'capitalize',
                       }}>{entry.level}</span>
 
-                      <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)' }}>Category</span>
+                      <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)' }}>{t('logs.category')}</span>
                       <span className="font-mono" style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-secondary)' }}>{entry.category}</span>
 
                       {entry.jobId && (
                         <>
-                          <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)' }}>Job ID</span>
+                          <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)' }}>{t('logs.jobId')}</span>
                           <span className="font-mono" style={{ fontSize: 'var(--text-caption2)', color: 'var(--text-secondary)' }}>{entry.jobId}</span>
                         </>
                       )}
 
                       {entry.durationMs != null && (
                         <>
-                          <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)' }}>Duration</span>
+                          <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)' }}>{t('logs.duration')}</span>
                           <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-secondary)' }}>{formatDuration(entry.durationMs)}</span>
                         </>
                       )}
 
-                      <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)' }}>Timestamp</span>
+                      <span style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)' }}>{t('logs.timestamp')}</span>
                       <span className="font-mono" style={{ fontSize: 'var(--text-caption2)', color: 'var(--text-secondary)' }}>
                         {new Date(entry.ts).toISOString()}
                       </span>

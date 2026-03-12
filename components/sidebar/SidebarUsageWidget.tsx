@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import type { ClaudeCodeUsage } from '@/lib/types'
+import { useI18n } from '@/lib/i18n'
 
 function getUsageColor(pct: number): string {
   if (pct >= 80) return 'var(--system-red)'
@@ -28,9 +29,13 @@ function useCountdown(resetsAt: string | null): string {
   return `${m}m ${s}s`
 }
 
-function fmtResetDay(resetsAt: string | null): string {
+function fmtResetDay(
+  resetsAt: string | null,
+  formatDate: (value: string | number | Date, options?: Intl.DateTimeFormatOptions) => string,
+  formatLabel: (date: string) => string,
+): string {
   if (!resetsAt) return '--'
-  return `Resets ${new Date(resetsAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`
+  return formatLabel(formatDate(resetsAt, { weekday: 'short', month: 'short', day: 'numeric' }))
 }
 
 function UsageBar({ label, utilization, subtitle }: {
@@ -90,6 +95,7 @@ function UsageBar({ label, utilization, subtitle }: {
 }
 
 export function SidebarUsageWidget() {
+  const { t, formatDate } = useI18n()
   const [usage, setUsage] = useState<ClaudeCodeUsage | null>(null)
 
   useEffect(() => {
@@ -104,7 +110,9 @@ export function SidebarUsageWidget() {
   }, [])
 
   const fiveHourCountdown = useCountdown(usage?.fiveHour.resetsAt ?? null)
-  const weeklyReset = fmtResetDay(usage?.sevenDay.resetsAt ?? null)
+  const weeklyReset = fmtResetDay(usage?.sevenDay.resetsAt ?? null, formatDate, (date) =>
+    t('usage.resetsOn', { date }),
+  )
 
   // Only show when we have real utilization data from the API
   if (!usage) return null
@@ -126,7 +134,7 @@ export function SidebarUsageWidget() {
         marginBottom: 'var(--space-2)',
         paddingLeft: '4px',
       }}>
-        Claude Code
+        {t('usage.claudeCode')}
         {critical && (
           <span style={{
             width: 6, height: 6, borderRadius: '50%',
@@ -136,12 +144,12 @@ export function SidebarUsageWidget() {
         )}
       </div>
       <UsageBar
-        label="5-Hour"
+        label={t('usage.fiveHour')}
         utilization={usage.fiveHour.utilization}
-        subtitle={`Resets in ${fiveHourCountdown}`}
+        subtitle={t('usage.resetsIn', { time: fiveHourCountdown })}
       />
       <UsageBar
-        label="Weekly"
+        label={t('usage.weekly')}
         utilization={usage.sevenDay.utilization}
         subtitle={weeklyReset}
       />

@@ -46,6 +46,7 @@ import {
   buildMemoryHealthPrompt,
   buildCheckFixPrompt,
 } from "@/lib/memory-health-prompt";
+import { useI18n, usePageTitle } from "@/lib/i18n";
 
 /* ─── Types ──────────────────────────────────────────────────── */
 
@@ -1488,6 +1489,8 @@ function EditingHintsPanel({ hints }: { hints: EditingHint[] }) {
 /* ─── Main Component ─────────────────────────────────────────── */
 
 export default function MemoryPage() {
+  const { t } = useI18n()
+  usePageTitle(t('titles.memory'))
   const [files, setFiles] = useState<MemoryFileInfo[]>([]);
   const [config, setConfig] = useState<MemoryConfig | null>(null);
   const [status, setStatus] = useState<MemoryStatus | null>(null);
@@ -2170,7 +2173,7 @@ export default function MemoryPage() {
                 lineHeight: "var(--leading-tight)",
               }}
             >
-              Memory
+              {t('memory.title')}
             </h1>
             {!loading && stats && (
               <p
@@ -2195,7 +2198,7 @@ export default function MemoryPage() {
           <button
             onClick={refresh}
             className="focus-ring"
-            aria-label="Refresh memory data"
+            aria-label={t('common.refresh')}
             style={{
               width: 32,
               height: 32,
@@ -2222,12 +2225,12 @@ export default function MemoryPage() {
             gap: "var(--space-1)",
           }}
         >
-          {TABS.map((t) => {
-            const isActive = tab === t.key;
+          {TABS.map((tabOption) => {
+            const isActive = tab === tabOption.key;
             return (
               <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
+                key={tabOption.key}
+                onClick={() => setTab(tabOption.key)}
                 className="focus-ring"
                 style={{
                   padding: "6px 16px",
@@ -2246,8 +2249,12 @@ export default function MemoryPage() {
                   gap: 6,
                 }}
               >
-                <t.Icon size={14} />
-                {t.label}
+                <tabOption.Icon size={14} />
+                {tabOption.key === 'overview'
+                  ? t('common.overview')
+                  : tabOption.key === 'browser'
+                    ? t('common.browser')
+                    : t('common.guide')}
               </button>
             );
           })}
@@ -2333,10 +2340,10 @@ export default function MemoryPage() {
                       <Activity size={18} style={{ color: "var(--accent)", flexShrink: 0 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
-                          Memory Advisor
+                          {t('memory.memoryAdvisor')}
                         </div>
                         <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
-                          AI-powered analysis of your memory system health
+                          {t('memory.memoryAdvisorDescription')}
                         </div>
                       </div>
                       {analysisStreaming && (
@@ -2348,7 +2355,7 @@ export default function MemoryPage() {
                             width: 6, height: 6, borderRadius: "50%", background: "var(--accent)",
                             animation: "pulse 1.2s infinite",
                           }} />
-                          Analyzing...
+                          {t('crons.analyzingSystemHealth')}
                         </span>
                       )}
                       {!analysisOpen && !analysisContent && !analysisStreaming && (
@@ -2362,7 +2369,7 @@ export default function MemoryPage() {
                             border: "none", cursor: "pointer",
                           }}
                         >
-                          Analyze
+                          {t('common.analyze')}
                         </button>
                       )}
                       {(analysisOpen || analysisContent) && (
@@ -2418,7 +2425,7 @@ export default function MemoryPage() {
                         {!analysisContent && !analysisStreaming && (
                           <div style={{ padding: "12px 20px 16px" }}>
                             <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
-                              Ask about
+                              {t('memory.askAbout')}
                             </div>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                               {[
@@ -2539,7 +2546,7 @@ export default function MemoryPage() {
                                     sendChatMessage();
                                   }
                                 }}
-                                placeholder="Ask a follow-up..."
+                                placeholder={t('memory.followUpPlaceholder')}
                                 disabled={chatStreaming}
                                 rows={1}
                                 style={{
@@ -2571,7 +2578,7 @@ export default function MemoryPage() {
                                   opacity: chatStreaming || !chatInput.trim() ? 0.5 : 1,
                                 }}
                               >
-                                Send
+                                {t('common.send')}
                               </button>
                             </div>
                           </>
@@ -2634,11 +2641,11 @@ export default function MemoryPage() {
                     <input
                       ref={searchRef}
                       type="search"
-                      placeholder="Search files..."
+                      placeholder={t('memory.searchFiles')}
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       className="apple-input focus-ring"
-                      aria-label="Search memory files"
+                      aria-label={t('memory.searchFiles')}
                       style={{
                         width: "100%",
                         height: 32,
@@ -2685,7 +2692,7 @@ export default function MemoryPage() {
                   <div
                     ref={listRef}
                     role="listbox"
-                    aria-label="Memory files"
+                    aria-label={t('memory.files')}
                     onKeyDown={handleListKeyDown}
                     className="flex-1 overflow-y-auto browser-sidebar"
                   >
@@ -2698,7 +2705,7 @@ export default function MemoryPage() {
                           color: "var(--text-tertiary)",
                         }}
                       >
-                        No files match
+                        {t('memory.noFilesMatch')}
                       </div>
                     ) : (
                       sortedFiles.map((file) => {

@@ -20,6 +20,7 @@ interface AgentDisplay {
 
 interface SettingsContextValue {
   settings: ClawPortSettings
+  setLanguage: (language: ClawPortSettings['language']) => void
   setAccentColor: (color: string | null) => void
   setPortalName: (name: string | null) => void
   setPortalSubtitle: (subtitle: string | null) => void
@@ -36,7 +37,8 @@ interface SettingsContextValue {
 }
 
 const SettingsContext = createContext<SettingsContextValue>({
-  settings: { accentColor: null, portalName: null, portalSubtitle: null, portalEmoji: null, portalIcon: null, iconBgHidden: false, emojiOnly: false, operatorName: null, agentOverrides: {}, liveStreamPosition: null },
+  settings: { language: 'zh-CN', accentColor: null, portalName: null, portalSubtitle: null, portalEmoji: null, portalIcon: null, iconBgHidden: false, emojiOnly: false, operatorName: null, agentOverrides: {}, liveStreamPosition: null },
+  setLanguage: () => {},
   setAccentColor: () => {},
   setPortalName: () => {},
   setPortalSubtitle: () => {},
@@ -79,6 +81,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setSettings(next)
     saveSettings(next)
   }, [])
+
+  const setLanguage = useCallback(
+    (language: ClawPortSettings['language']) => {
+      update({ ...settings, language })
+    },
+    [settings, update],
+  )
 
   const setAccentColor = useCallback(
     (color: string | null) => {
@@ -179,6 +188,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   const resetAll = useCallback(() => {
     const defaults: ClawPortSettings = {
+      language: 'zh-CN',
       accentColor: null,
       portalName: null,
       portalSubtitle: null,
@@ -197,6 +207,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     <SettingsContext.Provider
       value={{
         settings,
+        setLanguage,
         setAccentColor,
         setPortalName,
         setPortalSubtitle,

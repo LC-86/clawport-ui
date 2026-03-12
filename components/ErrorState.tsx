@@ -1,6 +1,7 @@
 'use client'
 
 import { RotateCcw } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 interface ErrorStateProps {
   message: string
@@ -8,6 +9,8 @@ interface ErrorStateProps {
 }
 
 export function ErrorState({ message, onRetry }: ErrorStateProps) {
+  const { t } = useI18n()
+
   return (
     <div
       className="flex items-center justify-center h-full"
@@ -49,7 +52,7 @@ export function ErrorState({ message, onRetry }: ErrorStateProps) {
           color: 'var(--text-primary)',
           marginBottom: 4,
         }}>
-          Something went wrong
+          {t('error.title')}
         </div>
 
         <p style={{
@@ -88,7 +91,7 @@ export function ErrorState({ message, onRetry }: ErrorStateProps) {
             }}
           >
             <RotateCcw size={16} />
-            Try Again
+            {t('common.tryAgain')}
           </button>
         )}
       </div>

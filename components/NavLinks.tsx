@@ -7,6 +7,7 @@ import { Map, MessageSquare, Clock, Activity, Brain, Columns3, BookOpen, Setting
 import type { LucideIcon } from 'lucide-react';
 import type { CronJob } from '@/lib/types';
 import { useSettings } from '@/app/settings-provider';
+import { useI18n, type MessageKey } from '@/lib/i18n';
 
 function getInitials(name: string | null): string {
   if (!name) return '??'
@@ -21,21 +22,21 @@ function getInitials(name: string | null): string {
 
 interface NavItem {
   href: string;
-  label: string;
+  labelKey: MessageKey;
   icon: LucideIcon;
   badge?: 'agents' | 'unread' | 'errors';
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/', label: 'Map', icon: Map, badge: 'agents' },
-  { href: '/kanban', label: 'Kanban', icon: Columns3 },
-  { href: '/chat', label: 'Messages', icon: MessageSquare, badge: 'unread' },
-  { href: '/crons', label: 'Crons', icon: Clock, badge: 'errors' },
-  { href: '/activity', label: 'Activity', icon: Activity },
-  { href: '/costs', label: 'Costs', icon: DollarSign },
-  { href: '/memory', label: 'Memory', icon: Brain },
-  { href: '/docs', label: 'Docs', icon: BookOpen },
-  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/', labelKey: 'nav.map', icon: Map, badge: 'agents' },
+  { href: '/kanban', labelKey: 'nav.kanban', icon: Columns3 },
+  { href: '/chat', labelKey: 'nav.messages', icon: MessageSquare, badge: 'unread' },
+  { href: '/crons', labelKey: 'nav.crons', icon: Clock, badge: 'errors' },
+  { href: '/activity', labelKey: 'nav.activity', icon: Activity },
+  { href: '/costs', labelKey: 'nav.costs', icon: DollarSign },
+  { href: '/memory', labelKey: 'nav.memory', icon: Brain },
+  { href: '/docs', labelKey: 'nav.docs', icon: BookOpen },
+  { href: '/settings', labelKey: 'nav.settings', icon: Settings },
 ];
 
 // ---------------------------------------------------------------------------
@@ -45,6 +46,7 @@ const NAV_ITEMS: NavItem[] = [
 export function NavLinks({ bottomSlot }: { bottomSlot?: React.ReactNode } = {}) {
   const pathname = usePathname();
   const { settings } = useSettings();
+  const { t } = useI18n();
   const [agentCount, setAgentCount] = useState<number | null>(null);
   const [cronCount, setCronCount] = useState<number | null>(null);
   const [cronErrorCount, setCronErrorCount] = useState<number | null>(null);
@@ -130,11 +132,11 @@ export function NavLinks({ bottomSlot }: { bottomSlot?: React.ReactNode } = {}) 
               fontWeight: hasErrors ? 600 : undefined,
             }}
           >
-            {hasErrors ? `${cronErrorCount} err` : cronCount}
+            {cronCount}
           </span>
           {hasErrors && (
             <span
-              aria-label={`${cronErrorCount} cron error${cronErrorCount > 1 ? 's' : ''}`}
+              aria-label={t('crons.filter.errors')}
               style={{
                 width: '6px',
                 height: '6px',
@@ -152,7 +154,7 @@ export function NavLinks({ bottomSlot }: { bottomSlot?: React.ReactNode } = {}) 
   }
 
   return (
-    <nav className="flex-1 flex flex-col" style={{ minHeight: 0, overflow: 'hidden' }} aria-label="Main navigation">
+    <nav className="flex-1 flex flex-col" style={{ minHeight: 0, overflow: 'hidden' }} aria-label={t('nav.workspace')}>
       {/* Scrollable nav items */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 12px 8px' }}>
         {/* Section header */}
@@ -167,7 +169,7 @@ export function NavLinks({ bottomSlot }: { bottomSlot?: React.ReactNode } = {}) 
             marginBottom: '2px',
           }}
         >
-          Workspace
+          {t('nav.workspace')}
         </div>
 
         <div className="flex flex-col gap-0.5">
@@ -184,7 +186,7 @@ export function NavLinks({ bottomSlot }: { bottomSlot?: React.ReactNode } = {}) 
                 key={item.href}
                 href={item.href}
                 className={`nav-item focus-ring ${isActive ? 'nav-item-active' : ''}`}
-                aria-label={item.label}
+                aria-label={t(item.labelKey)}
                 aria-current={isActive ? 'page' : undefined}
                 style={{
                   display: 'flex',
@@ -200,7 +202,7 @@ export function NavLinks({ bottomSlot }: { bottomSlot?: React.ReactNode } = {}) 
                   textDecoration: 'none',
                   transition: 'all 100ms var(--ease-smooth)',
                 }}
-              >
+                >
                 <Icon
                   size={16}
                   style={{
@@ -209,7 +211,7 @@ export function NavLinks({ bottomSlot }: { bottomSlot?: React.ReactNode } = {}) 
                     transition: 'color 100ms var(--ease-smooth)',
                   }}
                 />
-                <span style={{ flex: 1 }}>{item.label}</span>
+                <span style={{ flex: 1 }}>{t(item.labelKey)}</span>
                 {getBadge(item)}
               </Link>
             );

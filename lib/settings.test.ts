@@ -26,6 +26,7 @@ describe('loadSettings', () => {
   it('returns defaults when nothing is stored', () => {
     const s = loadSettings()
     expect(s).toEqual({
+      language: 'zh-CN',
       accentColor: null,
       portalName: null,
       portalSubtitle: null,
@@ -41,6 +42,7 @@ describe('loadSettings', () => {
 
   it('parses stored settings correctly', () => {
     store['clawport-settings'] = JSON.stringify({
+      language: 'en',
       accentColor: '#3B82F6',
       portalName: 'HQ',
       portalSubtitle: 'Base',
@@ -49,6 +51,7 @@ describe('loadSettings', () => {
       agentOverrides: { jarvis: { emoji: '🎯' } },
     })
     const s = loadSettings()
+    expect(s.language).toBe('en')
     expect(s.accentColor).toBe('#3B82F6')
     expect(s.portalName).toBe('HQ')
     expect(s.portalSubtitle).toBe('Base')
@@ -60,17 +63,20 @@ describe('loadSettings', () => {
   it('returns defaults for invalid JSON', () => {
     store['clawport-settings'] = 'not-json{{'
     const s = loadSettings()
+    expect(s.language).toBe('zh-CN')
     expect(s.accentColor).toBeNull()
     expect(s.agentOverrides).toEqual({})
   })
 
   it('handles partial/malformed data gracefully', () => {
     store['clawport-settings'] = JSON.stringify({
+      language: 'fr',
       accentColor: 42,
       portalName: true,
       agentOverrides: 'not-an-object',
     })
     const s = loadSettings()
+    expect(s.language).toBe('zh-CN')
     expect(s.accentColor).toBeNull()
     expect(s.portalName).toBeNull()
     expect(s.portalEmoji).toBeNull()
@@ -82,6 +88,7 @@ describe('loadSettings', () => {
 describe('saveSettings', () => {
   it('persists settings to localStorage', () => {
     const settings = {
+      language: 'zh-CN' as const,
       accentColor: '#EF4444',
       portalName: 'Test',
       portalSubtitle: null,
@@ -102,6 +109,7 @@ describe('saveSettings', () => {
 
   it('round-trips through load', () => {
     const settings = {
+      language: 'en' as const,
       accentColor: '#22C55E',
       portalName: 'Green HQ',
       portalSubtitle: 'Ops Center',

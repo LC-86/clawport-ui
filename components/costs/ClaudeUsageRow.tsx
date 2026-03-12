@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import type { ClaudeCodeUsage } from '@/lib/types'
 import { Cpu } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 function UsageRing({ pct, size = 56 }: { pct: number; size?: number }) {
   const r = (size - 6) / 2
@@ -47,14 +48,21 @@ function useCountdown(resetsAt: string | null): string {
   return `${m}m ${s}s`
 }
 
-function fmtResetDay(resetsAt: string | null): string {
+function fmtResetDay(
+  resetsAt: string | null,
+  formatDate: (value: string | number | Date, options?: Intl.DateTimeFormatOptions) => string,
+  formatLabel: (date: string) => string,
+): string {
   if (!resetsAt) return '--'
-  return `Resets ${new Date(resetsAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`
+  return formatLabel(formatDate(resetsAt, { weekday: 'short', month: 'short', day: 'numeric' }))
 }
 
 export function ClaudeUsageRow({ usage }: { usage: ClaudeCodeUsage }) {
+  const { t, formatDate } = useI18n()
   const fiveHourCountdown = useCountdown(usage.fiveHour.resetsAt)
-  const weeklyResetLabel = fmtResetDay(usage.sevenDay.resetsAt)
+  const weeklyResetLabel = fmtResetDay(usage.sevenDay.resetsAt, formatDate, (date) =>
+    t('usage.resetsOn', { date }),
+  )
 
   return (
     <div style={{ marginBottom: 'var(--space-4)' }}>
@@ -63,7 +71,7 @@ export function ClaudeUsageRow({ usage }: { usage: ClaudeCodeUsage }) {
         fontWeight: 'var(--weight-medium)', marginBottom: 'var(--space-3)',
       }}>
         <Cpu size={12} />
-        Claude Code Usage
+        {t('usage.claudeCode')}
       </div>
       <div className="usage-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
         {/* 5-Hour Window */}
@@ -80,7 +88,7 @@ export function ClaudeUsageRow({ usage }: { usage: ClaudeCodeUsage }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="flex items-center" style={{ gap: 6 }}>
               <span style={{ fontSize: 'var(--text-footnote)', fontWeight: 600, color: 'var(--text-primary)' }}>
-                5-Hour Window
+                {t('usage.fiveHourWindow')}
               </span>
               {usage.fiveHour.utilization >= 80 && (
                 <span className="usage-pulse" style={{
@@ -91,7 +99,7 @@ export function ClaudeUsageRow({ usage }: { usage: ClaudeCodeUsage }) {
               )}
             </div>
             <div style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
-              Resets in {fiveHourCountdown}
+              {t('usage.resetsIn', { time: fiveHourCountdown })}
             </div>
           </div>
         </div>
@@ -110,7 +118,7 @@ export function ClaudeUsageRow({ usage }: { usage: ClaudeCodeUsage }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="flex items-center" style={{ gap: 6 }}>
               <span style={{ fontSize: 'var(--text-footnote)', fontWeight: 600, color: 'var(--text-primary)' }}>
-                Weekly Cap
+                {t('usage.weeklyCap')}
               </span>
               {usage.sevenDay.utilization >= 80 && (
                 <span className="usage-pulse" style={{

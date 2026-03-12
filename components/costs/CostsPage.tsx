@@ -15,6 +15,7 @@ import { TopCrons } from './TopCrons'
 import { RunDetailTable } from './RunDetailTable'
 import { OptimizationCard } from './OptimizationPanel'
 import { ClaudeUsageRow } from './ClaudeUsageRow'
+import { useI18n, usePageTitle } from '@/lib/i18n'
 
 /* ── Chat message type ───────────────────────────────────────── */
 
@@ -28,6 +29,8 @@ interface CostChatMessage {
 /* ── CostsPage ───────────────────────────────────────────────── */
 
 export function CostsPage() {
+  const { t } = useI18n()
+  usePageTitle(t('titles.costs'))
   const [data, setData] = useState<CostSummary | null>(null)
   const [agents, setAgents] = useState<Agent[]>([])
   const [jobNames, setJobNames] = useState<Record<string, string>>({})
@@ -325,7 +328,7 @@ export function CostsPage() {
             color: 'var(--text-tertiary)',
             fontSize: 'var(--text-footnote)',
           }}>
-            No cost data -- runs without usage metadata will not appear here.
+            {t('costs.noRuns')}
           </div>
         )}
 
@@ -365,7 +368,7 @@ export function CostsPage() {
             {/* ── Summary cards ────────────────────────────────── */}
             <div className="costs-summary-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
               {/* Total Estimated Cost */}
-              <SummaryCard label="Total Estimated Cost">
+              <SummaryCard label={t('costs.totalEstimated')}>
                 <div className="flex items-center" style={{ gap: 'var(--space-2)' }}>
                   <span style={{ fontSize: 'var(--text-title2)', color: 'var(--text-primary)', fontWeight: 'var(--weight-bold)', fontVariantNumeric: 'tabular-nums' }}>
                     {fmtCost(data.totalCost)}
@@ -392,17 +395,17 @@ export function CostsPage() {
               </SummaryCard>
 
               {/* This Week vs Last Week */}
-              <SummaryCard label="This Week">
+              <SummaryCard label={t('costs.thisWeek')}>
                 <div style={{ fontSize: 'var(--text-title2)', color: 'var(--text-primary)', fontWeight: 'var(--weight-bold)', fontVariantNumeric: 'tabular-nums' }}>
                   {fmtCost(data.weekOverWeek.thisWeek)}
                 </div>
                 <div style={{ fontSize: 'var(--text-caption1)', color: 'var(--text-tertiary)', marginTop: 2 }}>
-                  last week: {fmtCost(data.weekOverWeek.lastWeek)}
+                  {t('costs.lastWeek', { value: fmtCost(data.weekOverWeek.lastWeek) })}
                 </div>
               </SummaryCard>
 
               {/* Cache Savings */}
-              <SummaryCard label="Cache Savings">
+              <SummaryCard label={t('costs.cacheSavings')}>
                 <div style={{ fontSize: 'var(--text-title2)', color: 'var(--system-green)', fontWeight: 'var(--weight-bold)', fontVariantNumeric: 'tabular-nums' }}>
                   {fmtCost(data.cacheSavings.estimatedSavings)}
                 </div>
@@ -412,7 +415,7 @@ export function CostsPage() {
               </SummaryCard>
 
               {/* Anomalies */}
-              <SummaryCard label="Anomalies">
+              <SummaryCard label={t('costs.anomalies')}>
                 <div className="flex items-center" style={{ gap: 'var(--space-2)' }}>
                   {data.anomalies.length > 0 && (
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--system-orange)', flexShrink: 0 }} />
@@ -454,10 +457,10 @@ export function CostsPage() {
                 <Activity size={18} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                    Agent Optimizer
+                    {t('costs.agentOptimizer')}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                    AI-powered analysis of your agent costs and throughput
+                    {t('costs.optimizerDescription')}
                   </div>
                 </div>
                 {analysisStreaming && (
@@ -469,7 +472,7 @@ export function CostsPage() {
                       width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)',
                       animation: 'pulse 1.2s infinite',
                     }} />
-                    Analyzing...
+                    {t('crons.analyzingSystemHealth')}
                   </span>
                 )}
                 {!analysisOpen && !analysisContent && !analysisStreaming && (
@@ -483,7 +486,7 @@ export function CostsPage() {
                       border: 'none', cursor: 'pointer',
                     }}
                   >
-                    Analyze
+                    {t('common.analyze')}
                   </button>
                 )}
                 {(analysisOpen || analysisContent) && (
@@ -539,7 +542,7 @@ export function CostsPage() {
                   {!analysisContent && !analysisStreaming && (
                     <div style={{ padding: '12px 20px 16px' }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
-                        Ask about
+                        {t('costs.askAbout')}
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         {[
@@ -660,7 +663,7 @@ export function CostsPage() {
                               sendChatMessage()
                             }
                           }}
-                          placeholder="Ask a follow-up..."
+                          placeholder={t('costs.followUpPlaceholder')}
                           disabled={chatStreaming}
                           rows={1}
                           style={{
@@ -692,7 +695,7 @@ export function CostsPage() {
                             opacity: chatStreaming || !chatInput.trim() ? 0.5 : 1,
                           }}
                         >
-                          Send
+                          {t('common.send')}
                         </button>
                       </div>
                     </>

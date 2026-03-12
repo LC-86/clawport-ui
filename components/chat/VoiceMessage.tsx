@@ -1,6 +1,7 @@
 'use client'
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { formatDuration } from '@/lib/audio-recorder'
+import { useI18n } from '@/lib/i18n'
 
 interface VoiceMessageProps {
   src: string
@@ -10,6 +11,7 @@ interface VoiceMessageProps {
 }
 
 export function VoiceMessage({ src, duration, waveform, isUser }: VoiceMessageProps) {
+  const { t } = useI18n()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [playing, setPlaying] = useState(false)
   const [progress, setProgress] = useState(0) // 0-1
@@ -67,7 +69,7 @@ export function VoiceMessage({ src, duration, waveform, isUser }: VoiceMessagePr
       {/* Play/Pause button */}
       <button
         onClick={toggle}
-        aria-label={playing ? 'Pause' : 'Play'}
+        aria-label={playing ? t('liveLogs.pause') : t('liveLogs.play')}
         style={{
           width: 28,
           height: 28,

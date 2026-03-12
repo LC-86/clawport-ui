@@ -10,6 +10,7 @@ import { ThemingSection } from "@/components/docs/ThemingSection";
 import { ComponentsSection } from "@/components/docs/ComponentsSection";
 import { TroubleshootingSection } from "@/components/docs/TroubleshootingSection";
 import { BestPracticesSection } from "@/components/docs/BestPracticesSection";
+import { useI18n, usePageTitle } from "@/lib/i18n";
 
 /* ─── Section Definitions ──────────────────────────────────────── */
 
@@ -109,6 +110,8 @@ function BackArrow() {
 /* ─── Component ────────────────────────────────────────────────── */
 
 export default function DocsPage() {
+  const { t } = useI18n()
+  usePageTitle(t('titles.docs'))
   const [activeSection, setActiveSection] = useState(SECTIONS[0].id);
   const [search, setSearch] = useState("");
   const [mobileShowContent, setMobileShowContent] = useState(false);
@@ -219,7 +222,7 @@ export default function DocsPage() {
               color: "var(--text-primary)",
             }}
           >
-            Docs
+            {t('docs.title')}
           </span>
         </div>
 
@@ -228,11 +231,11 @@ export default function DocsPage() {
           <input
             ref={searchRef}
             type="search"
-            placeholder="Search sections..."
+            placeholder={t('docs.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="apple-input focus-ring"
-            aria-label="Search documentation sections"
+            aria-label={t('docs.searchAria')}
             style={{
               width: "100%",
               height: 32,
@@ -247,7 +250,7 @@ export default function DocsPage() {
         <div
           ref={listRef}
           role="listbox"
-          aria-label="Documentation sections"
+          aria-label={t('docs.title')}
           onKeyDown={handleListKeyDown}
           className="flex-1 overflow-y-auto"
         >
@@ -260,7 +263,7 @@ export default function DocsPage() {
                 color: "var(--text-tertiary)",
               }}
             >
-              No sections match
+              {t('search.noResults')}
             </div>
           ) : (
             filteredSections.map((section) => {
